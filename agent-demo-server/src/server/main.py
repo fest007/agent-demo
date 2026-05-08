@@ -26,6 +26,12 @@ async def lifespan(app: FastAPI):
     - yield 之后的代码在应用关闭时执行（清理资源）
     """
     await init_db()  # 启动时初始化数据库（建表）
+
+    # 初始化 SQLAdmin 管理面板
+    from server.admin.views import setup_admin
+    from server.db import database
+    setup_admin(app, database.engine)
+
     yield
 
 
