@@ -12,6 +12,8 @@ from server.db.models import Conversation, KnowledgeDoc, SkillRecord
 
 class ConversationAdmin(ModelView, model=Conversation):
     """对话记录管理视图"""
+    name = "对话记录"
+    name_plural = "对话记录"
     column_list = [
         Conversation.id,
         Conversation.thread_id,
@@ -19,6 +21,14 @@ class ConversationAdmin(ModelView, model=Conversation):
         Conversation.emotion,
         Conversation.created_at,
     ]
+    column_labels = {
+        "id": "ID",
+        "thread_id": "会话线程",
+        "role": "角色",
+        "emotion": "情绪",
+        "content": "内容",
+        "created_at": "创建时间",
+    }
     column_searchable_list = [Conversation.thread_id, Conversation.content]
     column_sortable_list = [Conversation.created_at]
     page_size = 50
@@ -26,23 +36,41 @@ class ConversationAdmin(ModelView, model=Conversation):
 
 class KnowledgeDocAdmin(ModelView, model=KnowledgeDoc):
     """知识库文档管理视图"""
+    name = "知识文档"
+    name_plural = "知识文档"
     column_list = [
         KnowledgeDoc.id,
         KnowledgeDoc.source,
         KnowledgeDoc.doc_type,
         KnowledgeDoc.created_at,
     ]
+    column_labels = {
+        "id": "ID",
+        "source": "来源",
+        "doc_type": "文档类型",
+        "content": "内容",
+        "created_at": "创建时间",
+    }
     column_searchable_list = [KnowledgeDoc.source]
 
 
 class SkillRecordAdmin(ModelView, model=SkillRecord):
     """技能记录管理视图"""
+    name = "技能记录"
+    name_plural = "技能记录"
     column_list = [
         SkillRecord.id,
         SkillRecord.name,
         SkillRecord.is_builtin,
         SkillRecord.created_at,
     ]
+    column_labels = {
+        "id": "ID",
+        "name": "技能名称",
+        "is_builtin": "内置技能",
+        "description": "描述",
+        "created_at": "创建时间",
+    }
     column_searchable_list = [SkillRecord.name]
 
 
@@ -63,7 +91,7 @@ def setup_admin(app, database_url: str):
     sync_url = database_url.replace("+aiosqlite", "")
     sync_engine = create_engine(sync_url)
 
-    admin = Admin(app, sync_engine)
+    admin = Admin(app, sync_engine, title="智能 Agent 管理面板")
     admin.add_view(ConversationAdmin)
     admin.add_view(KnowledgeDocAdmin)
     admin.add_view(SkillRecordAdmin)
