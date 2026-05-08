@@ -26,12 +26,6 @@ async def lifespan(app: FastAPI):
     - yield 之后的代码在应用关闭时执行（清理资源）
     """
     await init_db()  # 启动时初始化数据库（建表）
-
-    # 初始化 SQLAdmin 管理面板
-    from server.admin.views import setup_admin
-    from server.db import database
-    setup_admin(app, database.engine)
-
     yield
 
 
@@ -45,6 +39,11 @@ app = FastAPI(
 
 # 配置 CORS 中间件（允许前端跨域访问）
 setup_cors(app)
+
+# 初始化 SQLAdmin 管理面板
+from server.admin.views import setup_admin
+from server.config import get_settings
+setup_admin(app, get_settings().database_url)
 
 # 注册所有 API 路由
 app.include_router(chat.router)        # 对话 API
