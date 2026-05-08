@@ -31,7 +31,7 @@ from agent.prompts import SYSTEM_PROMPT
 from agent.emotion.analyzer import analyze_emotion
 from agent.emotion.feedback import build_emotion_context
 from agent.rag.retriever import knowledge_search
-from agent.memory.manager import MemoryManager
+from agent.memory.manager import MemoryManager, format_memories_for_prompt
 from agent.memory.short_term import get_checkpointer
 
 
@@ -60,37 +60,20 @@ def _build_system_prompt(
     return system_content
 
 
-def _get_memory_context(user_id: str = "default") -> str:
+def _get_memory_context(query: str, user_id: str = "default") -> str:
     """
-    从长期记忆中读取用户信息
+    从长期记忆中检索与当前 query 相关的用户信息
 
-    长期记忆存储的是跨会话持久化的信息：
-    - 用户偏好（如"喜欢简洁回复"）
-    - 用户事实（如"公司名叫 XX 科技"）
+    采用混合检索策略：
+    1. 语义搜索：通过向量相似度找到与 query 最相关的记忆（top-5）
+    2. 核心偏好：preferences 命名空间下的记忆始终注入（不按相关性过滤）
 
-    这些信息在每次对话时都会注入到系统提示词中，
-    让 LLM 能"记住"用户。
+    两者去重合并后注入系统提示词。
     """
     try:
         manager = MemoryManager(user_id=user_id)
-        all_memories = manager.get_all_memories()
-
-        if not all_memories:
-            return ""
-
-        lines = ["以下是关于这个用户的已知信息，请在回复时参考："]
-        for mem in all_memories:
-            ns = mem.get("namespace", "")
-            key = mem.get("key", "")
-            value = mem.get("value", "")
-            if ns == "preferences":
-                lines.append(f"- 偏好：{key} = {value}")
-            elif ns == "facts":
-                lines.append(f"- 事实：{key} = {value}")
-            else:
-                lines.append(f"- {ns}：{key} = {value}")
-
-        return "\n".join(lines)
+        semantic_results, core_results = manager.search_with_core(query)
+        return format_memories_for_prompt(semantic_results, core_results)
     except Exception:
         return ""
 
@@ -141,7 +124,7 @@ async def chat(message: str, thread_id: str = "default", user_id: str = "default
     emotion, rag_context, memory_context = await asyncio.gather(
         analyze_emotion(llm, message),
         asyncio.to_thread(_get_rag_context, message),
-        asyncio.to_thread(_get_memory_context, user_id),
+        asyncio.to_thread(_get_memory_context, message, user_id),
     )
 
     # 组装系统提示词（长期记忆 + RAG + 情绪）
@@ -199,7 +182,7 @@ async def chat_stream(message: str, thread_id: str = "default", user_id: str = "
     emotion, rag_context, memory_context = await asyncio.gather(
         analyze_emotion(llm, message),
         asyncio.to_thread(_get_rag_context, message),
-        asyncio.to_thread(_get_memory_context, user_id),
+        asyncio.to_thread(_get_memory_context, message, user_id),
     )
 
     yield {"type": "emotion", "data": emotion}

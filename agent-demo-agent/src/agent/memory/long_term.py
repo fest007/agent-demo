@@ -15,8 +15,55 @@
 - 跨会话保持上下文
 """
 from agent.config import get_settings
+from agent.rag.embedder import get_embedder
+import chromadb
 import sqlite3
 from datetime import datetime
+
+
+# ChromaDB 用户记忆集合单例
+_user_memory_client = None
+_user_memory_collection = None
+
+
+def _get_user_memory_collection():
+    """获取用户记忆的 ChromaDB 集合单例（与知识库集合独立）"""
+    global _user_memory_client, _user_memory_collection
+    if _user_memory_collection is None:
+        settings = get_settings()
+        _user_memory_client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
+        _user_memory_collection = _user_memory_client.get_or_create_collection(
+            name="user_memory",
+            metadata={"hnsw:space": "cosine"},
+        )
+    return _user_memory_collection
+
+
+def _memory_id(user_id: str, namespace: str, key: str) -> str:
+    """生成确定性记忆 ID，支持 upsert 语义"""
+    return f"{user_id}_{namespace}_{key}"
+
+
+def _sync_to_chromadb(action: str, user_id: str, namespace: str, key: str, value: str = None):
+    """同步记忆到 ChromaDB，失败不影响 SQLite 主路径"""
+    try:
+        collection = _get_user_memory_collection()
+        doc_id = _memory_id(user_id, namespace, key)
+
+        if action == "upsert" and value is not None:
+            doc_text = f"{key}: {value}"
+            embedder = get_embedder()
+            embedding = embedder.embed_documents([doc_text])
+            collection.upsert(
+                ids=[doc_id],
+                documents=[doc_text],
+                embeddings=embedding,
+                metadatas=[{"user_id": user_id, "namespace": namespace, "key": key, "value": value}],
+            )
+        elif action == "delete":
+            collection.delete(ids=[doc_id])
+    except Exception:
+        pass  # ChromaDB 故障不阻塞 SQLite 操作
 
 
 class LongTermMemory:
@@ -86,6 +133,9 @@ class LongTermMemory:
         conn.commit()
         conn.close()
 
+        # 同步到 ChromaDB 向量库
+        _sync_to_chromadb("upsert", user_id, namespace, key, value)
+
     def get(self, user_id: str, namespace: str, key: str) -> str | None:
         """
         获取一条记忆
@@ -150,7 +200,54 @@ class LongTermMemory:
         )
         conn.commit()
         conn.close()
-        return cursor.rowcount > 0
+
+        if cursor.rowcount > 0:
+            # 同步删除 ChromaDB 中的向量
+            _sync_to_chromadb("delete", user_id, namespace, key)
+            return True
+        return False
+
+    def search(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
+        """
+        语义搜索用户记忆
+
+        通过向量相似度在 ChromaDB 中检索与 query 最相关的记忆。
+
+        Args:
+            user_id: 用户标识
+            query: 搜索查询文本
+            top_k: 返回的最大结果数
+
+        Returns:
+            按相关性排序的记忆列表
+        """
+        try:
+            collection = _get_user_memory_collection()
+            if collection.count() == 0:
+                return []
+
+            embedder = get_embedder()
+            query_embedding = embedder.embed_query(query)
+
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=min(top_k, collection.count()),
+                where={"user_id": user_id},
+            )
+
+            if not results["metadatas"] or not results["metadatas"][0]:
+                return []
+
+            memories = []
+            for meta in results["metadatas"][0]:
+                memories.append({
+                    "namespace": meta.get("namespace", ""),
+                    "key": meta.get("key", ""),
+                    "value": meta.get("value", ""),
+                })
+            return memories
+        except Exception:
+            return []
 
 
 # 全局单例

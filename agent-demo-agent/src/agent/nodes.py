@@ -16,7 +16,7 @@ from agent.prompts import SYSTEM_PROMPT
 from agent.emotion.analyzer import analyze_emotion
 from agent.emotion.feedback import build_emotion_context
 from agent.rag.retriever import knowledge_search
-from agent.memory.manager import MemoryManager
+from agent.memory.manager import MemoryManager, format_memories_for_prompt
 
 
 async def think_node(state: AgentState, llm: BaseChatModel, tools: list) -> dict:
@@ -141,12 +141,12 @@ async def memory_node(state: AgentState, user_id: str = "default") -> dict:
     """
     长期记忆检索节点
 
-    从长期记忆数据库中读取该用户的偏好和事实，
+    从长期记忆中语义检索与当前用户消息相关的记忆，
     注入到系统提示词中，让 LLM 能"记住"用户。
 
-    例如：
-    - 用户之前说过"我喜欢简洁的回复" → Agent 后续回复会更简短
-    - 用户之前说过"我叫张三" → Agent 可以称呼用户姓名
+    检索策略：
+    1. 语义搜索：通过向量相似度找到最相关的记忆（top-5）
+    2. 核心偏好：preferences 始终注入（不按相关性过滤）
 
     Args:
         state: 当前 Agent 状态
@@ -156,25 +156,18 @@ async def memory_node(state: AgentState, user_id: str = "default") -> dict:
         状态更新：设置 memory_context 字段
     """
     try:
-        manager = MemoryManager(user_id=user_id)
-        all_memories = manager.get_all_memories()
+        # 从消息中提取用户查询（与 rag_node 相同模式）
+        last_human = None
+        for msg in reversed(state["messages"]):
+            if isinstance(msg, HumanMessage):
+                last_human = msg
+                break
 
-        if not all_memories:
+        if not last_human:
             return {"memory_context": ""}
 
-        # 格式化记忆为文本
-        lines = ["以下是关于这个用户的已知信息，请在回复时参考："]
-        for mem in all_memories:
-            ns = mem.get("namespace", "")
-            key = mem.get("key", "")
-            value = mem.get("value", "")
-            if ns == "preferences":
-                lines.append(f"- 偏好：{key} = {value}")
-            elif ns == "facts":
-                lines.append(f"- 事实：{key} = {value}")
-            else:
-                lines.append(f"- {ns}：{key} = {value}")
-
-        return {"memory_context": "\n".join(lines)}
+        manager = MemoryManager(user_id=user_id)
+        semantic_results, core_results = manager.search_with_core(last_human.content)
+        return {"memory_context": format_memories_for_prompt(semantic_results, core_results)}
     except Exception:
         return {"memory_context": ""}
