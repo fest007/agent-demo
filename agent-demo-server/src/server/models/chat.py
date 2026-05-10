@@ -6,6 +6,7 @@ class ChatRequest(BaseModel):
     message: str
     thread_id: str = "default"
     enable_tts: bool = False
+    images: list[str] = []
 
 
 class ChatResponse(BaseModel):

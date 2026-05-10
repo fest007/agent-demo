@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Layout, Typography, Card, List, Switch, Tag, message, Space, Input } from "antd";
+import { Typography, Card, List, Switch, Tag, message, Space, Input } from "antd";
 import { ToolOutlined, SearchOutlined } from "@ant-design/icons";
 import { listTools, toggleTool } from "@/api/tools";
 
-const { Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
-/** 工具中文名称映射 */
 const toolNameMap: Record<string, string> = {
   web_search: "网络搜索",
   wikipedia_query: "维基百科",
@@ -29,7 +27,7 @@ interface ToolEntry {
   enabled: boolean;
 }
 
-export const Tools: React.FC = () => {
+const Tools: React.FC = () => {
   const [tools, setTools] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -45,7 +43,9 @@ export const Tools: React.FC = () => {
   useEffect(() => {
     mountedRef.current = true;
     loadTools();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const handleToggle = async (name: string, enable: boolean) => {
@@ -63,50 +63,135 @@ export const Tools: React.FC = () => {
 
   const toolEntries: ToolEntry[] = Object.entries(tools)
     .map(([name, enabled]) => ({ name, enabled }))
-    .filter((t) => !search || t.name.includes(search.toLowerCase()) || (toolNameMap[t.name] || "").includes(search));
+    .filter(
+      (t) =>
+        !search ||
+        t.name.includes(search.toLowerCase()) ||
+        (toolNameMap[t.name] || "").includes(search)
+    );
 
   return (
-    <Content style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>工具管理</Title>
-        <Input
-          prefix={<SearchOutlined />}
-          placeholder="搜索工具..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 220 }}
-          allowClear
-        />
-      </div>
-      <Card>
-        <List
-          dataSource={toolEntries}
-          renderItem={(item: ToolEntry) => (
-            <List.Item
-              actions={[
-                <Switch
-                  key="switch"
-                  checked={item.enabled}
-                  onChange={(checked) => handleToggle(item.name, checked)}
-                  loading={loading}
-                />,
-              ]}
+    <div className="page-container">
+      <div className="page-content">
+        <div
+          className="page-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 6,
+              }}
             >
-              <List.Item.Meta
-                avatar={<ToolOutlined style={{ fontSize: 20, color: item.enabled ? "#1677ff" : "#d9d9d9" }} />}
-                title={
-                  <Space>
-                    <Text strong>{toolNameMap[item.name] || item.name}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{item.name}</Text>
-                    {item.enabled ? <Tag color="green">启用</Tag> : <Tag color="default">禁用</Tag>}
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-          locale={{ emptyText: "暂无工具" }}
-        />
-      </Card>
-    </Content>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: "linear-gradient(135deg, #6366f1, #a78bfa)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: 18,
+                  boxShadow:
+                    "0 0 0 1px rgba(99,102,241,0.15), 0 4px 12px rgba(99,102,241,0.12)",
+                }}
+              >
+                <ToolOutlined />
+              </div>
+              <span className="page-title" style={{ marginBottom: 0 }}>
+                工具管理
+              </span>
+            </div>
+            <p className="page-description">启用或禁用助手可用的工具</p>
+          </div>
+          <Input
+            prefix={<SearchOutlined style={{ color: "#9ca0ab" }} />}
+            placeholder="搜索工具..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 240, borderRadius: 12 }}
+            allowClear
+          />
+        </div>
+
+        <Card
+          style={{
+            borderRadius: 16,
+            border: "1px solid rgba(0,0,0,0.05)",
+          }}
+        >
+          <List
+            dataSource={toolEntries}
+            renderItem={(item: ToolEntry) => (
+              <List.Item
+                actions={[
+                  <Switch
+                    key="switch"
+                    checked={item.enabled}
+                    onChange={(checked) => handleToggle(item.name, checked)}
+                    loading={loading}
+                  />,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={
+                    <div
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: item.enabled ? "#eef2ff" : "#f3f4f6",
+                        transition:
+                          "background 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+                      }}
+                    >
+                      <ToolOutlined
+                        style={{
+                          fontSize: 18,
+                          color: item.enabled ? "#6366f1" : "#9ca0ab",
+                          transition:
+                            "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+                        }}
+                      />
+                    </div>
+                  }
+                  title={
+                    <Space>
+                      <Text strong style={{ fontSize: 14, letterSpacing: "-0.01em" }}>
+                        {toolNameMap[item.name] || item.name}
+                      </Text>
+                      <Text
+                        type="secondary"
+                        style={{
+                          fontSize: 12,
+                          fontFamily: "'JetBrains Mono', monospace",
+                        }}
+                      >
+                        {item.name}
+                      </Text>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+            locale={{ emptyText: "暂无工具" }}
+          />
+        </Card>
+      </div>
+    </div>
   );
 };
+
+export { Tools };

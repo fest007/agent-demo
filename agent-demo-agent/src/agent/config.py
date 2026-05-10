@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     mimo_model: str = "mimo-v2.5-pro"
     # 轻量快速模型，用于简单任务（如情绪分析、技能生成）
     mimo_model_fast: str = "mimo-v2-flash"
+    # 多模态模型，支持图片输入
+    mimo_model_omni: str = "mimo-v2-omni"
 
     # ===== TTS 语音合成配置 =====
     # 默认 TTS 引擎：mimo-tts（MiMo 自带 TTS）或 edge-tts（微软免费 TTS）

@@ -1,19 +1,5 @@
-/**
- * App 根组件
- *
- * 应用的顶层组件，负责：
- * 1. 配置 Ant Design 中文语言包
- * 2. 渲染侧边栏 + 当前页面
- * 3. 根据 currentPage 状态切换页面
- *
- * 页面路由（简单实现，未使用 react-router）：
- * - chat: 对话主页
- * - knowledge: 知识库管理
- * - skills: 技能管理
- * - settings: 设置页面
- */
 import React from "react";
-import { Layout, ConfigProvider } from "antd";
+import { Layout, ConfigProvider, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { Sidebar } from "@/components/Sidebar";
 import { Home } from "@/pages/Home";
@@ -23,7 +9,6 @@ import { Skills } from "@/pages/Skills";
 import { Settings } from "@/pages/Settings";
 import { useAppStore } from "@/stores/appStore";
 
-// 页面映射表：key → 组件
 const pages: Record<string, React.FC> = {
   chat: Home,
   knowledge: Knowledge,
@@ -33,19 +18,71 @@ const pages: Record<string, React.FC> = {
 };
 
 const App: React.FC = () => {
-  // 从全局状态获取当前页面
   const currentPage = useAppStore((s) => s.currentPage);
-  // 根据 currentPage 选择要渲染的页面组件
   const Page = pages[currentPage] || Home;
 
   return (
-    // ConfigProvider: Ant Design 全局配置（语言、主题等）
-    <ConfigProvider locale={zhCN}>
-      {/* Layout: Ant Design 布局组件 */}
-      <Layout style={{ minHeight: "100vh" }}>
-        {/* 侧边栏 */}
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        token: {
+          // Brand
+          colorPrimary: "#6366f1",
+          colorLink: "#6366f1",
+          colorLinkHover: "#4338ca",
+
+          // Surface
+          colorBgContainer: "#ffffff",
+          colorBgLayout: "#fafbfc",
+          colorBgElevated: "#ffffff",
+
+          // Border — hairline, not solid gray
+          colorBorder: "rgba(0, 0, 0, 0.06)",
+          colorBorderSecondary: "rgba(0, 0, 0, 0.04)",
+
+          // Text
+          colorText: "#0c0e16",
+          colorTextSecondary: "#5c5f6e",
+          colorTextTertiary: "#9ca0ab",
+          colorTextQuaternary: "#c2c5ce",
+
+          // Radius — Squircle
+          borderRadius: 12,
+          borderRadiusLG: 16,
+          borderRadiusSM: 8,
+          borderRadiusXS: 6,
+
+          // Typography — Plus Jakarta Sans
+          fontFamily:
+            "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: 14,
+          fontSizeHeading1: 28,
+          fontSizeHeading2: 22,
+          fontSizeHeading3: 18,
+
+          // Sizing
+          controlHeight: 40,
+          controlHeightLG: 48,
+          controlHeightSM: 32,
+
+          // Shadows — Ultra-soft ambient
+          boxShadow:
+            "0 0 0 1px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04)",
+          boxShadowSecondary:
+            "0 0 0 1px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)",
+
+          // Motion
+          motionDurationFast: "0.2s",
+          motionDurationMid: "0.35s",
+          motionDurationSlow: "0.5s",
+          motionEaseInOut: "cubic-bezier(0.32, 0.72, 0, 1)",
+          motionEaseOut: "cubic-bezier(0.16, 1, 0.3, 1)",
+        },
+        algorithm: theme.defaultAlgorithm,
+      }}
+    >
+      <Layout className="app-layout">
         <Sidebar />
-        {/* 主内容区：根据 currentPage 动态渲染 */}
         <Layout>
           <Page />
         </Layout>

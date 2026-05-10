@@ -1,13 +1,5 @@
-/**
- * SessionList 会话列表组件
- *
- * 显示在侧边栏中（仅对话页面可见），提供：
- * - 新建对话按钮
- * - 会话列表（点击切换，hover 显示删除）
- * - 当前会话高亮
- */
 import React, { useEffect, useState } from "react";
-import { Button, List, Popconfirm, Typography, Checkbox } from "antd";
+import { Button, List, Popconfirm, Checkbox } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -23,8 +15,7 @@ import {
 } from "@/api/session";
 import { getHistory } from "@/api/chat";
 import type { Message } from "@/types";
-
-const { Text } = Typography;
+import { formatTime } from "@/utils/formatTime";
 
 export const SessionList: React.FC = () => {
   const { sessions, currentSessionId } = useSessionStore();
@@ -32,7 +23,6 @@ export const SessionList: React.FC = () => {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // 加载会话列表
   useEffect(() => {
     listSessions()
       .then((data) => {
@@ -120,13 +110,13 @@ export const SessionList: React.FC = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ margin: "12px 12px 8px", display: "flex", gap: 8 }}>
+    <div className="session-list-container">
+      <div className="session-list-header">
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleNewChat}
-          style={{ flex: 1 }}
+          className="session-new-btn"
         >
           新对话
         </Button>
@@ -137,108 +127,94 @@ export const SessionList: React.FC = () => {
             setSelectedIds(new Set());
           }}
           danger={batchMode}
+          className="session-batch-btn"
         >
           {batchMode ? "取消" : "批量"}
         </Button>
       </div>
 
       {batchMode && selectedIds.size > 0 && (
-        <div style={{ margin: "0 12px 8px" }}>
+        <div style={{ padding: "0 14px 8px" }}>
           <Popconfirm
             title={`确定删除选中的 ${selectedIds.size} 个对话？`}
             onConfirm={handleBatchDelete}
           >
-            <Button
-              type="primary"
-              danger
-              icon={<DeleteOutlined />}
-              block
-            >
+            <Button type="primary" danger icon={<DeleteOutlined />} block size="small">
               删除选中 ({selectedIds.size})
             </Button>
           </Popconfirm>
         </div>
       )}
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 4px" }}>
+      <div className="session-list-scroll">
         <List
           dataSource={sessions}
-          renderItem={(session) => (
-            <List.Item
-              onClick={() =>
-                batchMode
-                  ? toggleSelect(session.sessionId)
-                  : handleSwitchSession(session.sessionId)
-              }
-              style={{
-                padding: "8px 12px",
-                cursor: "pointer",
-                borderRadius: 8,
-                backgroundColor:
-                  currentSessionId === session.sessionId && !batchMode
-                    ? "#e6f4ff"
-                    : "transparent",
-                marginBottom: 2,
-              }}
-              actions={
-                batchMode
-                  ? [
-                      <Checkbox
-                        key="check"
-                        checked={selectedIds.has(session.sessionId)}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={() => toggleSelect(session.sessionId)}
-                      />,
-                    ]
-                  : [
-                      <Popconfirm
-                        key="delete"
-                        title="确定删除此对话？"
-                        onConfirm={(e) => {
-                          e?.stopPropagation();
-                          handleDeleteSession(session.sessionId);
-                        }}
-                        onCancel={(e) => e?.stopPropagation()}
-                      >
-                        <DeleteOutlined
-                          style={{ color: "#999", fontSize: 14 }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </Popconfirm>,
-                    ]
-              }
-            >
-              <List.Item.Meta
-                avatar={
-                  batchMode ? (
-                    <Checkbox
-                      checked={selectedIds.has(session.sessionId)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={() => toggleSelect(session.sessionId)}
-                    />
-                  ) : (
-                    <MessageOutlined
-                      style={{ color: "#1677ff", fontSize: 16 }}
-                    />
-                  )
+          renderItem={(session, index) => {
+            const isActive = currentSessionId === session.sessionId && !batchMode;
+            return (
+              <div
+                className={`session-item ${isActive ? "session-item-active" : ""}`}
+                onClick={() =>
+                  batchMode
+                    ? toggleSelect(session.sessionId)
+                    : handleSwitchSession(session.sessionId)
                 }
-                title={
-                  <Text
-                    ellipsis
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  animationDelay: `${index * 0.03}s`,
+                }}
+              >
+                {batchMode ? (
+                  <Checkbox
+                    checked={selectedIds.has(session.sessionId)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggleSelect(session.sessionId)}
+                    style={{ marginRight: 10 }}
+                  />
+                ) : (
+                  <MessageOutlined
                     style={{
+                      color: isActive ? "#6366f1" : "#9ca0ab",
                       fontSize: 14,
-                      fontWeight:
-                        currentSessionId === session.sessionId && !batchMode
-                          ? 600
-                          : 400,
+                      marginRight: 12,
+                      flexShrink: 0,
+                      transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+                    }}
+                  />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    className="session-item-title"
+                    style={{
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? "#6366f1" : undefined,
                     }}
                   >
                     {session.name}
-                  </Text>
-                }
-              />
-            </List.Item>
-          )}
+                  </div>
+                  <div className="session-item-time">
+                    {formatTime(session.updatedAt)}
+                  </div>
+                </div>
+                {!batchMode && (
+                  <Popconfirm
+                    title="确定删除此对话？"
+                    onConfirm={(e) => {
+                      e?.stopPropagation();
+                      handleDeleteSession(session.sessionId);
+                    }}
+                    onCancel={(e) => e?.stopPropagation()}
+                  >
+                    <DeleteOutlined
+                      className="session-delete-btn"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </Popconfirm>
+                )}
+              </div>
+            );
+          }}
           locale={{ emptyText: "暂无对话" }}
           size="small"
         />

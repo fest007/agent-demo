@@ -1,50 +1,26 @@
-/**
- * useChat Hook
- *
- * 封装了对话的核心逻辑，包括：
- * 1. 发送消息
- * 2. 接收流式响应
- * 3. 管理消息列表状态
- * 4. 处理情绪、工具调用等事件
- *
- * 使用方式：
- *   const { messages, isLoading, send } = useChat();
- *   send("你好");
- */
 import { useCallback } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { useSessionStore } from "@/stores/sessionStore";
-import { sendMessage, streamMessage } from "@/api/chat";
+import { streamMessage } from "@/api/chat";
 import { summarizeSession } from "@/api/session";
 import type { Message } from "@/types";
 
 export function useChat() {
-  // 从 Zustand store 获取状态和方法
   const store = useChatStore();
 
-  /**
-   * 发送消息并处理流式响应
-   *
-   * 流程：
-   * 1. 创建用户消息，添加到消息列表
-   * 2. 创建空的 Agent 消息（占位）
-   * 3. 调用流式 API，逐 token 更新 Agent 消息
-   * 4. 流结束后，将完整内容写入 Agent 消息
-   */
   const send = useCallback(
-    async (content: string) => {
-      // 第一步：创建用户消息
+    async (content: string, images?: string[]) => {
       const userMsg: Message = {
         id: Date.now().toString(),
         role: "user",
         content,
         timestamp: new Date(),
+        images,
       };
       store.addMessage(userMsg);
       store.setLoading(true);
       store.setStreamingContent("");
 
-      // 第二步：创建空的 Agent 消息（占位，内容会逐步填充）
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -53,11 +29,12 @@ export function useChat() {
       };
       store.addMessage(assistantMsg);
 
+      const ac = new AbortController();
+      store.setAbortController(ac);
+
       try {
-        // 第三步：处理流式事件
-        // 用局部变量累积内容，避免 store 引用过期
         let fullContent = "";
-        for await (const event of streamMessage(content, store.threadId)) {
+        for await (const event of streamMessage(content, store.threadId, images, ac.signal)) {
           if (event.type === "emotion") {
             store.setCurrentEmotion(event.data as string);
           } else if (event.type === "token") {
@@ -65,47 +42,120 @@ export function useChat() {
             store.appendStreamToken(event.data as string);
           } else if (event.type === "tool_start") {
             const toolData = event.data as any;
-            // input 可能是对象或字符串，统一格式化为可读的 JSON
-            const inputStr = typeof toolData.input === "object"
-              ? JSON.stringify(toolData.input, null, 2)
-              : String(toolData.input ?? "");
-            store.addToolCall({
+            const inputStr =
+              typeof toolData.input === "object"
+                ? JSON.stringify(toolData.input, null, 2)
+                : String(toolData.input ?? "");
+            store.addToolCall({ name: toolData.name, input: inputStr });
+          }
+        }
+
+        store.updateLastAssistant(fullContent);
+
+        const currentSessionId = useSessionStore.getState().currentSessionId;
+        if (currentSessionId) {
+          const session = useSessionStore
+            .getState()
+            .sessions.find((s) => s.sessionId === currentSessionId);
+          if (session?.name === "新对话") {
+            summarizeSession(currentSessionId)
+              .then((updated) => {
+                useSessionStore
+                  .getState()
+                  .updateSessionName(currentSessionId, updated.name);
+              })
+              .catch(() => {});
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          // User stopped — keep whatever content was generated so far
+          const msgs = store.messages;
+          const last = msgs[msgs.length - 1];
+          if (last?.role === "assistant" && last.content) {
+            // Keep the partial content
+          } else {
+            // No content generated yet — remove the empty assistant message
+            store.updateLastAssistant("(已停止)");
+          }
+        } else {
+          store.updateLastAssistant(`错误: ${err}`);
+        }
+      } finally {
+        store.setLoading(false);
+        store.setStreamingContent("");
+        store.setAbortController(null);
+      }
+    },
+    [store]
+  );
+
+  const regenerate = useCallback(
+    async (messageId: string) => {
+      const messages = store.messages;
+      const msgIndex = messages.findIndex((m) => m.id === messageId);
+      if (msgIndex < 0) return;
+
+      const assistantMsg = messages[msgIndex];
+      if (assistantMsg.role !== "assistant") return;
+
+      let userContent = "";
+      let userImages: string[] | undefined;
+      for (let i = msgIndex - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          userContent = messages[i].content;
+          userImages = messages[i].images;
+          break;
+        }
+      }
+      if (!userContent) return;
+
+      store.saveCurrentVersion(messageId);
+      store.regenerateStart(messageId);
+
+      const ac = new AbortController();
+      store.setAbortController(ac);
+
+      try {
+        let fullContent = "";
+        let emotion = "";
+        for await (const event of streamMessage(
+          userContent,
+          store.threadId,
+          userImages,
+          ac.signal
+        )) {
+          if (event.type === "emotion") {
+            emotion = event.data as string;
+            store.setCurrentEmotion(emotion);
+          } else if (event.type === "token") {
+            fullContent += event.data as string;
+            store.regenerateStreamToken(messageId, event.data as string);
+          } else if (event.type === "tool_start") {
+            const toolData = event.data as any;
+            const inputStr =
+              typeof toolData.input === "object"
+                ? JSON.stringify(toolData.input, null, 2)
+                : String(toolData.input ?? "");
+            store.regenerateAddToolCall(messageId, {
               name: toolData.name,
               input: inputStr,
             });
           }
         }
 
-        // 第四步：流结束后，将完整内容写入 Agent 消息
-        store.updateLastAssistant(fullContent);
-
-        // 第五步：如果是新会话的第一轮对话，触发 LLM 总结命名
-        const currentSessionId = useSessionStore.getState().currentSessionId;
-        if (currentSessionId) {
-          const session = useSessionStore.getState().sessions.find(
-            (s) => s.sessionId === currentSessionId
-          );
-          if (session?.name === "新对话") {
-            summarizeSession(currentSessionId)
-              .then((updated) => {
-                useSessionStore.getState().updateSessionName(
-                  currentSessionId,
-                  updated.name
-                );
-              })
-              .catch(() => {});
-          }
+        store.regenerateFinish(messageId, fullContent, emotion);
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          // Keep partial content on abort
+          store.regenerateFinish(messageId, store.messages.find(m => m.id === messageId)?.content || "(已停止)", "");
+        } else {
+          store.regenerateFinish(messageId, `错误: ${err}`);
         }
-      } catch (err) {
-        store.updateLastAssistant(`错误: ${err}`);
-      } finally {
-        store.setLoading(false);
-        store.setStreamingContent("");
       }
     },
     [store]
   );
 
-  // 返回 store 的所有状态 + send 方法
-  return { ...store, send };
+  return { ...store, send, regenerate };
 }

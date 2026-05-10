@@ -72,7 +72,7 @@ async def chat_endpoint(
     # 调用 Agent
     # thread_id: 短期记忆隔离键（Checkpointer 按此加载对话历史）
     # user_id: 长期记忆隔离键（按用户读取偏好和事实）
-    result = await chat_fn(request.message, thread_id=thread_id, user_id=user.user_id)
+    result = await chat_fn(request.message, thread_id=thread_id, user_id=user.user_id, images=request.images)
 
     # 保存对话记录到数据库
     # 先保存用户消息，再保存 Agent 回复
@@ -128,7 +128,7 @@ async def chat_stream_endpoint(
         """
         full_content = ""
         emotion = None
-        async for event in chat_stream_fn(request.message, thread_id=thread_id, user_id=user.user_id):
+        async for event in chat_stream_fn(request.message, thread_id=thread_id, user_id=user.user_id, images=request.images):
             # 收到 done 事件时，先保存再 yield
             if event["type"] == "done" and full_content:
                 try:

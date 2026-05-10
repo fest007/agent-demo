@@ -32,6 +32,14 @@ export const VoicePlayer: React.FC<{ text: string }> = ({ text }) => {
         icon={loading ? <LoadingOutlined /> : <SoundOutlined />}
         onClick={play}
         disabled={loading}
+        style={{
+          color: "#9ca0ab",
+          fontSize: 13,
+          padding: "0 4px",
+          height: 24,
+          borderRadius: 9999,
+          transition: "all 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
       />
       <audio ref={audioRef} />
     </>

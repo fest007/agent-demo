@@ -1,3 +1,10 @@
+export interface MessageVersion {
+  content: string;
+  toolCalls?: ToolCall[];
+  emotion?: string;
+  timestamp: Date;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -5,6 +12,9 @@ export interface Message {
   emotion?: string;
   timestamp: Date;
   toolCalls?: ToolCall[];
+  images?: string[];
+  versions?: MessageVersion[];
+  currentVersionIndex?: number;
 }
 
 export interface ToolCall {

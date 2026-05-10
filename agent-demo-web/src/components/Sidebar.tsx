@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, Layout, Button, Typography } from "antd";
+import { Menu, Layout, Button } from "antd";
 import {
   MessageOutlined,
   BookOutlined,
@@ -8,12 +8,12 @@ import {
   SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "@/stores/appStore";
 import { SessionList } from "./SessionList";
 
 const { Sider } = Layout;
-const { Title } = Typography;
 
 export const Sidebar: React.FC = () => {
   const { sidebarCollapsed, toggleSidebar, currentPage, setCurrentPage } = useAppStore();
@@ -32,37 +32,39 @@ export const Sidebar: React.FC = () => {
       collapsed={sidebarCollapsed}
       onCollapse={toggleSidebar}
       trigger={null}
-      style={{
-        background: "#fff",
-        borderRight: "1px solid #f0f0f0",
-        display: "flex",
-        flexDirection: "column",
-      }}
+      width={280}
+      collapsedWidth={72}
+      className="sidebar"
     >
-      <div style={{ padding: "16px", textAlign: "center" }}>
-        <Title level={4} style={{ margin: 0, fontSize: sidebarCollapsed ? 16 : 20 }}>
-          {sidebarCollapsed ? "AI" : "智能 Agent"}
-        </Title>
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <RobotOutlined />
+        </div>
+        {!sidebarCollapsed && (
+          <span className="sidebar-title">智能 Agent</span>
+        )}
       </div>
+
       <Menu
         mode="inline"
         selectedKeys={[currentPage]}
         items={items}
         onClick={({ key }) => setCurrentPage(key)}
+        className="sidebar-menu"
       />
-      {/* 对话页面显示会话列表 */}
+
       {!sidebarCollapsed && currentPage === "chat" && (
-        <div style={{ flex: 1, overflow: "hidden" }}>
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <SessionList />
         </div>
       )}
-      <div style={{ textAlign: "center", padding: "8px 0" }}>
-        <Button
-          type="text"
-          icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={toggleSidebar}
-        />
-      </div>
+
+      <Button
+        type="text"
+        icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+        onClick={toggleSidebar}
+        className="sidebar-collapse-btn"
+      />
     </Sider>
   );
 };

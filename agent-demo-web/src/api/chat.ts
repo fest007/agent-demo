@@ -18,9 +18,10 @@ import type { ChatResponse } from "@/types";
 export async function sendMessage(
   message: string,
   threadId: string = "default",
-  enableTts: boolean = false
+  enableTts: boolean = false,
+  images: string[] = []
 ): Promise<ChatResponse> {
-  return api.post("/chat", { message, thread_id: threadId, enable_tts: enableTts });
+  return api.post("/chat", { message, thread_id: threadId, enable_tts: enableTts, images });
 }
 
 /**
@@ -52,13 +53,16 @@ export async function getHistory(threadId: string) {
  */
 export async function* streamMessage(
   message: string,
-  threadId: string = "default"
+  threadId: string = "default",
+  images: string[] = [],
+  signal?: AbortSignal
 ): AsyncGenerator<{ type: string; data: string | object }> {
   // 发送 POST 请求到流式端点
   const resp = await fetch("/api/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, thread_id: threadId }),
+    body: JSON.stringify({ message, thread_id: threadId, images }),
+    signal,
   });
 
   if (!resp.body) throw new Error("No response body");

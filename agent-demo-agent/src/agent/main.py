@@ -24,7 +24,7 @@ Agent 主入口模块
 """
 import asyncio
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 from agent.config import get_settings
 from agent.graph import build_agent
 from agent.prompts import SYSTEM_PROMPT
@@ -89,7 +89,7 @@ def _get_rag_context(query: str) -> str:
         return ""
 
 
-async def chat(message: str, thread_id: str = "default", user_id: str = "default") -> dict:
+async def chat(message: str, thread_id: str = "default", user_id: str = "default", images: list[str] | None = None) -> dict:
     """
     同步对话函数
 
@@ -113,8 +113,11 @@ async def chat(message: str, thread_id: str = "default", user_id: str = "default
     """
     settings = get_settings()
 
+    # 有图片时使用多模态模型
+    model = settings.mimo_model_omni if images else settings.mimo_model
+
     llm = ChatOpenAI(
-        model=settings.mimo_model,
+        model=model,
         api_key=settings.mimo_api_key,
         base_url=settings.mimo_base_url,
         temperature=0.7,
@@ -136,21 +139,25 @@ async def chat(message: str, thread_id: str = "default", user_id: str = "default
     # 构建 Agent（传入 checkpointer 启用短期记忆）
     agent = await build_agent(llm, checkpointer=checkpointer)
 
-    # 调用 Agent
-    # config 中的 thread_id 是短期记忆的关键：
-    # - Checkpointer 会自动加载该 thread_id 的历史消息
-    # - LLM 能看到之前的对话轮次
-    # - 执行完成后自动保存新的状态
     config = {"configurable": {"thread_id": thread_id}}
+
+    # 构造用户消息：有图片时使用多模态格式
+    if images:
+        human_content = [{"type": "text", "text": message}]
+        for img in images:
+            human_content.append({"type": "image_url", "image_url": {"url": img}})
+        human_msg = HumanMessage(content=human_content)
+    else:
+        human_msg = ("human", message)
 
     result = await agent.ainvoke(
         {
             "messages": [
-                SystemMessage(content=system_content),  # 带上下文的系统提示词
-                ("human", message),                      # 当前用户消息
+                SystemMessage(content=system_content),
+                human_msg,
             ]
         },
-        config=config,  # 关键：传入 thread_id
+        config=config,
     )
 
     last_msg = result["messages"][-1]
@@ -161,7 +168,7 @@ async def chat(message: str, thread_id: str = "default", user_id: str = "default
     }
 
 
-async def chat_stream(message: str, thread_id: str = "default", user_id: str = "default"):
+async def chat_stream(message: str, thread_id: str = "default", user_id: str = "default", images: list[str] | None = None):
     """
     流式对话函数（生成器）
 
@@ -170,8 +177,10 @@ async def chat_stream(message: str, thread_id: str = "default", user_id: str = "
     """
     settings = get_settings()
 
+    model = settings.mimo_model_omni if images else settings.mimo_model
+
     llm = ChatOpenAI(
-        model=settings.mimo_model,
+        model=model,
         api_key=settings.mimo_api_key,
         base_url=settings.mimo_base_url,
         temperature=0.7,
@@ -195,14 +204,23 @@ async def chat_stream(message: str, thread_id: str = "default", user_id: str = "
     # 短期记忆：通过 config 传入 thread_id
     config = {"configurable": {"thread_id": thread_id}}
 
+    # 构造用户消息：有图片时使用多模态格式
+    if images:
+        human_content = [{"type": "text", "text": message}]
+        for img in images:
+            human_content.append({"type": "image_url", "image_url": {"url": img}})
+        human_msg = HumanMessage(content=human_content)
+    else:
+        human_msg = ("human", message)
+
     async for event in agent.astream_events(
         {
             "messages": [
                 SystemMessage(content=system_content),
-                ("human", message),
+                human_msg,
             ]
         },
-        config=config,  # 关键：传入 thread_id
+        config=config,
         version="v2",
     ):
         kind = event.get("event", "")
