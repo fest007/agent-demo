@@ -47,6 +47,8 @@
 
 ## 快速开始
 
+本地分终端启动请优先查看 [STARTUP.md](STARTUP.md)，其中包含三个子项目的一键启动脚本和注意事项。
+
 ### 前置条件
 
 - Python >= 3.11
@@ -54,15 +56,17 @@
 - pnpm（前端包管理）
 - uv（Python 包管理）
 
-### 1. 启动 Agent 核心层
+### 1. 准备 Agent 核心层配置
 
 ```bash
 cd agent-demo-agent
 uv sync
 cp .env.example .env
 # 编辑 .env，填入你的 MiMo API Key
-python -m agent.main
 ```
+
+> 当前后端以 Python 包方式直接调用 `agent-demo-agent`，不需要单独启动 Agent HTTP 服务。
+> 如需命令行调试 Agent，可在该目录运行 `python -m agent.main`。
 
 ### 2. 启动后端服务
 
@@ -99,8 +103,7 @@ agentDemo/
 │
 ├── agent-demo-agent/            # Agent 核心层
 │   ├── src/agent/
-│   │   ├── graph.py             # LangGraph StateGraph
-│   │   ├── nodes.py             # 图节点（思考、工具、情绪）
+│   │   ├── graph.py             # LangGraph ReAct Agent 构建
 │   │   ├── tools/               # 内置工具集
 │   │   ├── rag/                 # RAG 知识库引擎
 │   │   ├── memory/              # 双层记忆系统

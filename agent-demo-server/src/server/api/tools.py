@@ -9,16 +9,17 @@
 """
 from fastapi import APIRouter, Depends
 from server.deps import get_current_user, UserContext
+from server.agent_import import ensure_agent_on_path
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
 
 def _get_tools():
     """动态导入工具注册中心"""
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent / "agent-demo-agent" / "src"))
+    ensure_agent_on_path()
     from agent.tools import tool_registry
+    from agent.tools import register_all_tools
+    register_all_tools()
     return tool_registry
 
 

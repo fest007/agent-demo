@@ -16,6 +16,7 @@ from server.models.session import SessionResponse, SessionUpdate
 from server.db.models import Session as SessionModel, Conversation
 from server.db.database import get_session
 from server.deps import get_current_user, UserContext
+from server.agent_import import ensure_agent_on_path
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -146,16 +147,7 @@ async def summarize_session(
 
     # 调用 LLM 生成总结
     try:
-        import sys
-        from pathlib import Path
-        sys.path.insert(
-            0,
-            str(
-                Path(__file__).resolve().parent.parent.parent.parent.parent
-                / "agent-demo-agent"
-                / "src"
-            ),
-        )
+        ensure_agent_on_path()
         from agent.config import get_settings
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import HumanMessage

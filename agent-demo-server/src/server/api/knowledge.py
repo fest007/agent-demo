@@ -6,17 +6,18 @@
 - POST /api/knowledge/ingest-url: URL 抓取并入库
 - POST /api/knowledge/ingest-text: 文本直接入库
 - GET /api/knowledge/list: 列出已入库文档
-- DELETE /api/knowledge/{doc_id}: 删除知识库文档
+- DELETE /api/knowledge: 按来源删除知识库文档
 
 知识库存储在 ChromaDB 向量数据库中，
 文件会被分割成小块、转为向量后存储。
 """
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, Query
 from server.models.knowledge import (
     KnowledgeUploadResponse, KnowledgeIngestURLRequest,
     KnowledgeIngestTextRequest, KnowledgeDocument,
 )
 from server.deps import get_current_user, UserContext
+from server.agent_import import ensure_agent_on_path
 import tempfile
 from pathlib import Path
 
@@ -30,9 +31,7 @@ def _get_rag():
     与 chat.py 中的 _get_agent() 类似，
     将 agent-demo-agent/src 加入 Python 路径。
     """
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent / "agent-demo-agent" / "src"))
+    ensure_agent_on_path()
     from agent.rag.ingest import ingest_file, ingest_url, ingest_text, list_documents, delete_document
     return ingest_file, ingest_url, ingest_text, list_documents, delete_document
 
@@ -133,8 +132,11 @@ async def list_docs(user: UserContext = Depends(get_current_user)):
     return list_documents_fn()
 
 
-@router.delete("/{doc_id}")
-async def delete_doc(source: str, user: UserContext = Depends(get_current_user)):
+@router.delete("")
+async def delete_doc(
+    source: str = Query(..., description="文档来源，通常是文件路径或 URL"),
+    user: UserContext = Depends(get_current_user),
+):
     """按来源删除知识库文档"""
     _, _, _, _, delete_document_fn = _get_rag()
     try:

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Typography, Upload, Button, Input, List, Card, message, Space, Tag } from "antd";
 import { UploadOutlined, LinkOutlined, DeleteOutlined, BookOutlined } from "@ant-design/icons";
-import { uploadFile, ingestUrl, listDocuments } from "@/api/knowledge";
+import { uploadFile, ingestUrl, listDocuments, deleteDocument } from "@/api/knowledge";
 import type { KnowledgeDocument } from "@/types";
 
 const Knowledge: React.FC = () => {
@@ -48,6 +48,19 @@ const Knowledge: React.FC = () => {
       loadDocs();
     } catch {
       message.error("URL 入库失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (source: string) => {
+    setLoading(true);
+    try {
+      const result = await deleteDocument(source);
+      message.success((result as any).message);
+      loadDocs();
+    } catch {
+      message.error("删除失败");
     } finally {
       setLoading(false);
     }
@@ -173,6 +186,8 @@ const Knowledge: React.FC = () => {
                     danger
                     icon={<DeleteOutlined />}
                     size="small"
+                    loading={loading}
+                    onClick={() => handleDelete(doc.source)}
                     style={{ borderRadius: 8 }}
                   />,
                 ]}

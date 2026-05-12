@@ -10,15 +10,14 @@
 """
 from fastapi import APIRouter, Depends
 from server.deps import get_current_user, UserContext
+from server.agent_import import ensure_agent_on_path
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
 
 
 def _get_memory():
     """动态导入记忆管理器"""
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent / "agent-demo-agent" / "src"))
+    ensure_agent_on_path()
     from agent.memory.manager import MemoryManager
     return MemoryManager
 

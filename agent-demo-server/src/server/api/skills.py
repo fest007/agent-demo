@@ -10,15 +10,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from server.models.skill import SkillInfo, SkillCreateRequest, SkillGenerateRequest, SkillUpdateRequest
 from server.deps import get_current_user, UserContext
+from server.agent_import import ensure_agent_on_path
 
 router = APIRouter(prefix="/api/skills", tags=["skills"])
 
 
 def _get_skills():
     """动态导入技能模块，如果技能注册中心为空则先加载所有技能"""
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent / "agent-demo-agent" / "src"))
+    ensure_agent_on_path()
     from agent.skills.executor import list_skills, get_skill
     from agent.skills.generator import generate_skill
     from agent.skills.registry import Skill, skill_registry, load_builtin_skills, load_persisted_skills
@@ -92,6 +91,7 @@ async def generate_skill_endpoint(
     """
     _, _, generate_skill_fn, _, _ = _get_skills()
 
+    ensure_agent_on_path()
     from langchain_openai import ChatOpenAI
     from agent.config import get_settings
     settings = get_settings()

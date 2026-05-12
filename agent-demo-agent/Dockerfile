@@ -9,8 +9,6 @@ RUN uv pip install --system -e .
 
 COPY . .
 
-RUN mkdir -p data/chroma data/memory.db data/long_term.db
-
-EXPOSE 8001
+RUN mkdir -p data/chroma knowledge
 
 CMD ["python", "-m", "agent.main"]

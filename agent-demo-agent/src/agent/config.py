@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     # MCP 服务器配置文件路径，定义要连接的外部 MCP 工具服务器
     mcp_config_path: str = str(_PROJECT_ROOT / "mcp_servers" / "config.json")
 
+    # ===== 工具安全配置 =====
+    # 默认不暴露可执行本机命令/代码/任意写文件的高危工具。
+    # 本地开发确实需要时，可在 .env 中设置 ENABLE_DANGEROUS_TOOLS=true。
+    enable_dangerous_tools: bool = False
+    # 文件工具允许访问的根目录，防止 Agent 读取/写入项目外文件。
+    tool_workspace_root: str = str(_PROJECT_ROOT.parent)
+
     # pydantic-settings 的模型配置
     model_config = {
         "env_file": str(_PROJECT_ROOT / ".env"),  # 从项目根目录的 .env 文件读取

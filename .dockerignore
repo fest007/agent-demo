@@ -1,0 +1,11 @@
+.git
+.agents
+.codex
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/dist
+**/test-results
+**/data
+agent-demo-web/tsconfig.tsbuildinfo

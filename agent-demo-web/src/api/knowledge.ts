@@ -20,3 +20,7 @@ export async function ingestText(text: string, source: string = "manual") {
 export async function listDocuments(): Promise<KnowledgeDocument[]> {
   return api.get("/knowledge/list");
 }
+
+export async function deleteDocument(source: string) {
+  return api.delete(`/knowledge?source=${encodeURIComponent(source)}`);
+}

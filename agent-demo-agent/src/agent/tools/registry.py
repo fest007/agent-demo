@@ -23,6 +23,7 @@ class ToolRegistry:
         self._tools: dict[str, BaseTool] = {}
         # 存储被禁用的工具名称集合
         self._disabled: set[str] = set()
+        self._default_policy_applied = False
 
     def register(self, tool: BaseTool) -> None:
         """注册一个工具到注册中心"""
@@ -54,6 +55,13 @@ class ToolRegistry:
     def list_status(self) -> dict[str, bool]:
         """列出所有工具的启用状态，返回 {工具名: 是否启用}"""
         return {name: name not in self._disabled for name in self._tools}
+
+    def apply_default_policy(self, disabled_by_default: set[str]) -> None:
+        """首次注册后应用默认禁用策略，不覆盖运行时手动启停。"""
+        if self._default_policy_applied:
+            return
+        self._disabled.update(name for name in disabled_by_default if name in self._tools)
+        self._default_policy_applied = True
 
 
 # 全局单例，整个应用共用一个注册中心

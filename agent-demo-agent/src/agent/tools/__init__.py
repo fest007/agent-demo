@@ -32,6 +32,10 @@ from agent.tools.json_tool import json_parse
 from agent.tools.csv_tool import csv_query
 from agent.tools.http_tool import http_request
 from agent.tools.url_to_knowledge import url_to_knowledge
+from agent.config import get_settings
+
+
+DANGEROUS_TOOLS = {"write_file", "run_shell", "python_repl"}
 
 
 def register_all_tools() -> list:
@@ -62,7 +66,11 @@ def register_all_tools() -> list:
     for t in tools:
         tool_registry.register(t)
 
-    return tools
+    settings = get_settings()
+    if not settings.enable_dangerous_tools:
+        tool_registry.apply_default_policy(DANGEROUS_TOOLS)
+
+    return tool_registry.get_all()
 
 
 __all__ = ["tool_registry", "register_all_tools"]

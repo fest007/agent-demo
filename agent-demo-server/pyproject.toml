@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "智能 Agent 后端服务层 - FastAPI"
 requires-python = ">=3.11"
 dependencies = [
+    "agent-demo-agent",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "sse-starlette>=2.0",
@@ -15,6 +16,9 @@ dependencies = [
     "aiosqlite>=0.20",
     "sqladmin>=0.19",
 ]
+
+[tool.uv.sources]
+agent-demo-agent = { path = "../agent-demo-agent", editable = true }
 
 [project.optional-dependencies]
 dev = [

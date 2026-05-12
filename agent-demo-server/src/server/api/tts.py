@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from pydantic import BaseModel
 from server.deps import get_current_user, UserContext
+from server.agent_import import ensure_agent_on_path
 
 router = APIRouter(prefix="/api/tts", tags=["tts"])
 
@@ -40,9 +41,7 @@ async def text_to_speech(
     Returns:
         MP3 音频二进制数据
     """
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent / "agent-demo-agent" / "src"))
+    ensure_agent_on_path()
     from agent.tts.edge_tts import EdgeTTSEngine
     from agent.tts.mimo_tts import MiMoTTSEngine
 

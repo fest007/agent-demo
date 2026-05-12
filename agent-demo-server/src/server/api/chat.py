@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from server.db import database
 from server.db.database import get_session
 from server.db.models import Conversation
+from server.agent_import import ensure_agent_on_path
 from sqlalchemy import select
 import json
 
@@ -33,10 +34,7 @@ def _get_agent():
     需要将其 src 目录加入 Python 路径才能导入。
     这种方式避免了硬编码路径。
     """
-    import sys
-    from pathlib import Path
-    # 计算 agent-demo-agent/src 的绝对路径
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent.parent / "agent-demo-agent" / "src"))
+    ensure_agent_on_path()
     from agent.main import chat, chat_stream
     return chat, chat_stream
 

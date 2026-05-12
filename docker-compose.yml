@@ -1,26 +1,18 @@
 version: "3.8"
 
 services:
-  agent:
-    build: ./agent-demo-agent
-    ports:
-      - "8001:8001"
-    volumes:
-      - ./agent-demo-agent/data:/app/data
-      - ./agent-demo-agent/knowledge:/app/knowledge
-    env_file:
-      - ./agent-demo-agent/.env
-    restart: unless-stopped
-
   server:
-    build: ./agent-demo-server
+    build:
+      context: .
+      dockerfile: agent-demo-server/Dockerfile
     ports:
       - "8000:8000"
-    depends_on:
-      - agent
     volumes:
       - ./agent-demo-server/data:/app/data
+      - ./agent-demo-agent/data:/app/agent-demo-agent/data
+      - ./agent-demo-agent/knowledge:/app/agent-demo-agent/knowledge
     env_file:
+      - ./agent-demo-agent/.env
       - ./agent-demo-server/.env
     restart: unless-stopped
 

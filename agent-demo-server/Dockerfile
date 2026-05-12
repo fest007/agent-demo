@@ -4,12 +4,15 @@ WORKDIR /app
 
 RUN pip install uv
 
-COPY pyproject.toml .
-RUN uv pip install --system -e .
+COPY agent-demo-agent ./agent-demo-agent
+RUN uv pip install --system -e ./agent-demo-agent
 
-COPY . .
+COPY agent-demo-server ./agent-demo-server
+RUN uv pip install --system -e ./agent-demo-server
 
-RUN mkdir -p data
+WORKDIR /app/agent-demo-server
+
+RUN mkdir -p data /app/agent-demo-agent/data/chroma /app/agent-demo-agent/knowledge
 
 EXPOSE 8000
 

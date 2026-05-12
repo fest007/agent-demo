@@ -12,6 +12,17 @@
 """
 from langchain_core.tools import tool
 from pathlib import Path
+from agent.config import get_settings
+
+
+def _resolve_workspace_path(file_path: str) -> Path:
+    """解析路径，并限制在配置的工具工作目录内。"""
+    settings = get_settings()
+    root = Path(settings.tool_workspace_root).resolve()
+    path = Path(file_path).resolve()
+    if path != root and root not in path.parents:
+        raise ValueError(f"路径超出工具工作目录: {root}")
+    return path
 
 
 @tool
@@ -27,7 +38,7 @@ def read_file(file_path: str) -> str:
     """
     try:
         # resolve() 将相对路径转为绝对路径，避免路径歧义
-        path = Path(file_path).resolve()
+        path = _resolve_workspace_path(file_path)
 
         if not path.exists():
             return f"文件不存在: {file_path}"
@@ -54,7 +65,7 @@ def write_file(file_path: str, content: str) -> str:
         成功或失败信息
     """
     try:
-        path = Path(file_path).resolve()
+        path = _resolve_workspace_path(file_path)
         # parents=True: 递归创建父目录
         # exist_ok=True: 目录已存在时不报错
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +87,7 @@ def list_files(directory: str = ".") -> str:
         文件和目录列表（最多 50 项）
     """
     try:
-        path = Path(directory).resolve()
+        path = _resolve_workspace_path(directory)
         if not path.is_dir():
             return f"目录不存在: {directory}"
 
