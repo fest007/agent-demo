@@ -42,3 +42,8 @@ Thumbs.db
 
 # Claude
 .claude/
+
+# AI coding assistants / local skills
+.agents/
+.codex/
+skills-lock.json
