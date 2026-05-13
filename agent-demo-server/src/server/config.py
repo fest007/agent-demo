@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     server_port: int = 8000
     database_url: str = f"sqlite+aiosqlite:///{_PROJECT_ROOT / 'data' / 'server.db'}"
     agent_module_path: str = "../agent-demo-agent"
+    desktop_mode: bool = False
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+    ]
 
     model_config = {"env_file": str(_PROJECT_ROOT / ".env"), "env_file_encoding": "utf-8"}
 

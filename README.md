@@ -47,6 +47,7 @@
 - **工具与 Skills**：内置搜索、计算、文件、RAG、技能等工具，支持 MCP 扩展外部工具。
 - **会话管理**：多会话隔离、自动总结命名、历史恢复、媒体任务完成通知。
 - **发版自动化**：修改版本号后推送到 GitHub，可自动打包并上传 GitHub Releases。
+- **桌面安装包**：Release 使用 Tauri + Python sidecar 产出 macOS `.dmg` 和 Windows `.exe`。
 
 ## 快速开始
 
@@ -56,6 +57,7 @@
 
 - Python >= 3.11
 - Node.js 23（本项目本机统一使用 `nvm use 23`）
+- Rust stable（仅桌面调试/打包需要）
 - pnpm
 - uv
 
@@ -203,6 +205,7 @@ agentDemo/
 | TTS | MiMo TTS + Edge-TTS |
 | 包管理 | uv (Python) / pnpm (Node) |
 | 发版 | GitHub Actions + GitHub Releases |
+| 桌面壳 | Tauri + Python sidecar |
 
 ## 发版
 
@@ -215,7 +218,7 @@ git commit -m "chore: release v0.2.0"
 git push origin main
 ```
 
-推送后 GitHub Actions 会构建前端、校验 Python 依赖、打包三项目发行包并上传到 GitHub Releases。更多说明见 [RELEASE.md](RELEASE.md)。
+推送后 GitHub Actions 会构建前端、打包 Python sidecar、生成 Tauri `.dmg` / `.exe`，并上传到 GitHub Releases。更多说明见 [RELEASE.md](RELEASE.md)。
 
 ## 许可证
 

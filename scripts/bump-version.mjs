@@ -14,6 +14,8 @@ if (!version || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) {
 
 const files = [
   path.join(root, "agent-demo-web", "package.json"),
+  path.join(root, "agent-demo-web", "src-tauri", "Cargo.toml"),
+  path.join(root, "agent-demo-web", "src-tauri", "tauri.conf.json"),
   path.join(root, "agent-demo-agent", "pyproject.toml"),
   path.join(root, "agent-demo-server", "pyproject.toml"),
 ];
@@ -27,7 +29,7 @@ write(path.join(root, "VERSION"), `${version}\n`);
 
 for (const file of files) {
   const content = fs.readFileSync(file, "utf8");
-  if (file.endsWith("package.json")) {
+  if (file.endsWith("package.json") || file.endsWith("tauri.conf.json")) {
     const json = JSON.parse(content);
     json.version = version;
     write(file, `${JSON.stringify(json, null, 2)}\n`);

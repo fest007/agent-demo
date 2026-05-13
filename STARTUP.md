@@ -83,6 +83,8 @@ nvm use 23
 pnpm install
 ```
 
+如需本地调试/打包桌面端，还需要安装 Rust stable。桌面端采用 Tauri + Python sidecar，后端 sidecar 默认监听 `127.0.0.1:18765`。
+
 ## 日常启动顺序
 
 推荐开两个或三个终端，每个终端只跑一个脚本。
@@ -187,3 +189,26 @@ docker compose up --build
 ```
 
 Docker Compose 默认让后端使用 Qdrant：`VECTOR_STORE=qdrant`、`QDRANT_URL=http://qdrant:6333`。当前本地开发更推荐使用上面的分终端脚本。Docker 适合验证容器化部署，不适合后续 debugger 分层调试。
+
+## 桌面打包
+
+桌面安装包使用 Tauri + Python sidecar：
+
+```bash
+cd /Users/szz/Desktop/ai各种测试/agentDemo
+source ~/.nvm/nvm.sh
+nvm use 23
+
+node scripts/build-sidecar.mjs
+cd agent-demo-web
+pnpm desktop:build
+```
+
+本地打包需要：
+
+- Rust stable
+- Python 3.11 + uv
+- Node 23 + pnpm
+- macOS 生成 `.dmg`，Windows 生成 NSIS `.exe`
+
+当前安装包未配置签名和公证，正式分发前需要补 Apple Developer ID、Windows 代码签名证书和 notarization。

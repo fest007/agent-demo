@@ -44,6 +44,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Setup Rust
+        run: rustup default stable
+
       - name: Enable pnpm
         run: corepack enable
 
@@ -65,6 +68,31 @@ jobs:
       - name: Validate server dependencies
         working-directory: agent-demo-server
         run: uv sync --locked
+
+      - name: Build Python sidecar
+        run: node scripts/build-sidecar.mjs
+
+      - name: Build desktop installer
+        working-directory: agent-demo-web
+        run: pnpm tauri build
+
+      - name: Collect macOS installer
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          VERSION="$(cat VERSION)"
+          mkdir -p dist-release/installers
+          DMG="$(find agent-demo-web/src-tauri/target/release/bundle/dmg -name '*.dmg' | head -1)"
+          cp "$DMG" "dist-release/installers/agent-demo-${VERSION}-macos.dmg"
+
+      - name: Collect Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION).Trim()
+          New-Item -ItemType Directory -Force -Path dist-release/installers | Out-Null
+          $exe = Get-ChildItem agent-demo-web/src-tauri/target/release/bundle/nsis -Filter *.exe | Select-Object -First 1
+          Copy-Item $exe.FullName "dist-release/installers/agent-demo-$version-windows.exe" -Force
 
       - name: Prepare release bundle
         run: node scripts/prepare-release-bundle.mjs
@@ -88,6 +116,8 @@ jobs:
         with:
           name: agent-demo-${{ matrix.name }}
           path: |
+            dist-release/installers/*.dmg
+            dist-release/installers/*.exe
             dist-release/*.tar.gz
             dist-release/*.zip
 

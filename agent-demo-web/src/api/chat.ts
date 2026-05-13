@@ -9,7 +9,7 @@
  * 流式对话使用 Server-Sent Events (SSE) 协议。
  * SSE 格式：每条消息由 "event:" 和 "data:" 两行组成，以空行分隔。
  */
-import { api } from "./client";
+import { api, apiFetch } from "./client";
 import type { ChatResponse, ChatHistoryItem } from "@/types";
 import type { ModelSelection } from "@/stores/appStore";
 
@@ -81,7 +81,7 @@ export async function* streamMessage(
   selection?: ModelSelection
 ): AsyncGenerator<{ type: string; data: string | object }> {
   // 发送 POST 请求到流式端点
-  const resp = await fetch("/api/chat/stream", {
+  const resp = await apiFetch("/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, thread_id: threadId, images, ...modelPayload(selection) }),

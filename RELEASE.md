@@ -1,6 +1,6 @@
 # Release
 
-本项目的发布链路支持两种入口：修改 `VERSION` 后推送到 `main`，或推送 `vX.Y.Z` tag。GitHub Actions 会自动构建并上传到 GitHub Releases。
+本项目的发布链路支持两种入口：修改 `VERSION` 后推送到 `main`，或推送 `vX.Y.Z` tag。GitHub Actions 会自动构建 Tauri 桌面安装包并上传到 GitHub Releases。
 
 ## 本地发版步骤
 
@@ -23,12 +23,13 @@ git push origin v0.2.0
 
 ## 自动打包内容
 
-- `agent-demo-web/dist`：Web 前端构建产物
-- `agent-demo-server`：FastAPI 服务源码与依赖声明
-- `agent-demo-agent`：Agent 核心源码与依赖声明
-- `scripts`、`STARTUP.md`、`docker-compose.yml`：启动脚本与部署说明
+- `agent-demo-<version>-macos.dmg`：macOS 桌面安装包
+- `agent-demo-<version>-windows.exe`：Windows NSIS 安装包
+- `agent-demo-<version>-macos.tar.gz` / `agent-demo-<version>-windows.zip`：源码/部署补充包
 
-当前仓库还没有 Electron/Tauri 桌面壳，所以 Release 产物是三项目可部署包；后续加入桌面端时，可在同一个 workflow 中追加 `.exe`、`.dmg` 构建步骤。
+桌面包采用 Tauri + Python sidecar MVP：Tauri 负责桌面壳，PyInstaller 将 FastAPI 后端打成 sidecar，应用启动时只绑定 `127.0.0.1:18765`。
+
+当前尚未配置 Apple Developer ID、Windows 代码签名证书和 macOS notarization，因此安装包是未签名包。后续正式分发需要补签名与公证链路。
 
 ## 向量库环境
 

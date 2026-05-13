@@ -1,0 +1,18 @@
+[package]
+name = "agent-demo-desktop"
+version = "0.3.0"
+description = "Agent Demo desktop app"
+authors = ["Agent Demo"]
+edition = "2021"
+
+[lib]
+name = "agent_demo_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde_json = "1"

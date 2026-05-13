@@ -1,6 +1,6 @@
 [project]
 name = "agent-demo-server"
-version = "0.2.0"
+version = "0.3.0"
 description = "智能 Agent 后端服务层 - FastAPI"
 requires-python = ">=3.11"
 dependencies = [
@@ -22,6 +22,7 @@ agent-demo-agent = { path = "../agent-demo-agent", editable = true }
 
 [project.optional-dependencies]
 dev = [
+    "pyinstaller>=6.0",
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "ruff>=0.5",

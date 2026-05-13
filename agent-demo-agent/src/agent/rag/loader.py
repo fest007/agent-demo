@@ -13,6 +13,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 from bs4 import BeautifulSoup
 import httpx
+from agent.tools.url_security import validate_public_http_url
 
 
 def _normalize_text(text: str) -> str:
@@ -77,11 +78,13 @@ def load_url(url: str) -> list[Document]:
     Returns:
         Document 列表
     """
+    safe_url = validate_public_http_url(url)
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
-    resp = httpx.get(url, headers=headers, follow_redirects=True, timeout=15)
+    resp = httpx.get(safe_url, headers=headers, follow_redirects=True, timeout=15)
+    validate_public_http_url(str(resp.url))
     resp.raise_for_status()
 
     # 解析 HTML，去除非内容标签。这里抓取的是服务端返回的 HTML；

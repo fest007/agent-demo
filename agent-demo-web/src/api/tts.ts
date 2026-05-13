@@ -1,9 +1,11 @@
+import { apiFetch } from "./client";
+
 export async function synthesizeSpeech(
   text: string,
   voice: string = "default",
   engine: string = "edge-tts"
 ): Promise<Blob> {
-  const resp = await fetch("/api/tts", {
+  const resp = await apiFetch("/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, voice, engine }),
