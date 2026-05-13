@@ -140,11 +140,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
+          shopt -s nullglob
           if [ "$RELEASE_TAG" = "main" ]; then
             RELEASE_TAG="v$(cat VERSION)"
           fi
-          gh release create "$RELEASE_TAG" release-artifacts/* \
+          mapfile -d '' assets < <(find release-artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.tar.gz' -o -name '*.zip' \) -print0 | sort -z)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets found in release-artifacts" >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$GITHUB_SHA" \
             --title "$RELEASE_TAG" \
             --notes "Automated release for $RELEASE_TAG" \
-          || gh release upload "$RELEASE_TAG" release-artifacts/* --clobber
+          || gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
