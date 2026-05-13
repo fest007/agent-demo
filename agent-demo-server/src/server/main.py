@@ -12,7 +12,7 @@ FastAPI 后端服务主入口
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from server.middleware.cors import setup_cors
-from server.api import chat, knowledge, skills, memory, tools, tts, health, session
+from server.api import chat, knowledge, skills, memory, tools, tts, health, session, settings, media
 from server.db.database import init_db
 
 
@@ -54,6 +54,8 @@ app.include_router(tools.router)       # 工具管理 API
 app.include_router(tts.router)         # TTS 语音合成 API
 app.include_router(health.router)      # 健康检查 API
 app.include_router(session.router)    # 会话管理 API
+app.include_router(settings.router)   # 设置 API
+app.include_router(media.router)      # 媒体生成任务 API
 
 
 @app.get("/")

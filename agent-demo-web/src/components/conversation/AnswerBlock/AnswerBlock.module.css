@@ -1,0 +1,142 @@
+.bubble {
+  position: relative;
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: var(--s-lg) var(--s-xl);
+  border-bottom-left-radius: var(--r-sm);
+  transition: box-shadow var(--t-fast);
+  box-shadow:
+    0 0 0 1px var(--c-assistant-border),
+    0 2px 12px rgba(0, 0, 0, 0.04),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.bubble:hover {
+  box-shadow:
+    0 0 0 1px var(--c-border-hover),
+    0 4px 16px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.bubble :global(p) {
+  margin-bottom: 0.6em;
+  line-height: 1.75;
+}
+
+.bubble :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.bubble :global(ul),
+.bubble :global(ol) {
+  padding-left: 1.4em;
+  margin: 0.5em 0;
+}
+
+.bubble :global(li) {
+  margin-bottom: 0.3em;
+  line-height: 1.7;
+}
+
+.bubble :global(blockquote) {
+  border-left: 3px solid var(--c-primary-light);
+  padding-left: var(--s-lg);
+  margin: 0.8em 0;
+  color: var(--c-text-secondary);
+  font-style: italic;
+}
+
+.bubble :global(table) {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: 100%;
+  font-size: var(--fs-sm);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+}
+
+.bubble :global(th),
+.bubble :global(td) {
+  border: 1px solid var(--c-border);
+  padding: var(--s-sm) var(--s-md);
+  text-align: left;
+}
+
+.bubble :global(th) {
+  background: var(--c-surface-muted);
+  font-weight: 600;
+}
+
+.bubble :global(a) {
+  color: var(--c-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--t-fast);
+}
+
+.bubble :global(a:hover) {
+  border-bottom-color: var(--c-primary);
+}
+
+.bubble :global(h1),
+.bubble :global(h2),
+.bubble :global(h3) {
+  margin: 1em 0 0.5em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.bubble :global(h1) {
+  font-size: 1.35em;
+}
+
+.bubble :global(h2) {
+  font-size: 1.2em;
+}
+
+.bubble :global(h3) {
+  font-size: 1.05em;
+}
+
+.waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-sm);
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.loadingDots {
+  display: flex;
+  gap: 6px;
+}
+
+.loadingDot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  background: var(--c-primary-light);
+  animation: dotPulse 1.4s var(--ease-spring) infinite;
+}
+
+.loadingDot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loadingDot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--c-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: cursorPulse 1s var(--ease-spring) infinite;
+}

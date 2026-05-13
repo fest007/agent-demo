@@ -93,12 +93,13 @@ async def generate_skill_endpoint(
 
     ensure_agent_on_path()
     from langchain_openai import ChatOpenAI
-    from agent.config import get_settings
-    settings = get_settings()
+    from agent.model_providers import resolve_model_config
+
+    model_config = resolve_model_config(purpose="fast")
     llm = ChatOpenAI(
-        model=settings.mimo_model_fast,
-        api_key=settings.mimo_api_key,
-        base_url=settings.mimo_base_url,
+        model=model_config.model,
+        api_key=model_config.api_key,
+        base_url=model_config.base_url,
     )
 
     try:

@@ -1,9 +1,64 @@
 import { useCallback } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useAppStore } from "@/stores/appStore";
 import { streamMessage } from "@/api/chat";
 import { summarizeSession } from "@/api/session";
-import type { Message } from "@/types";
+import { mediaTaskPoller } from "@/utils/MediaTaskPoller";
+import type { MediaTask, Message } from "@/types";
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function createMarkdownTokenFlusher(append: (text: string) => void, charsPerSecond: number) {
+  let buffer = "";
+  let timer: ReturnType<typeof window.setInterval> | null = null;
+  const interval = 32;
+  const charsPerTick = Math.max(1, Math.round((Math.max(20, charsPerSecond) * interval) / 1000));
+
+  const flushOnce = () => {
+    if (!buffer) {
+      if (timer) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+      return;
+    }
+    const chunk = buffer.slice(0, charsPerTick);
+    buffer = buffer.slice(charsPerTick);
+    append(chunk);
+  };
+
+  const start = () => {
+    if (!timer) timer = window.setInterval(flushOnce, interval);
+  };
+
+  return {
+    push(text: string) {
+      if (!text) return;
+      buffer += text;
+      start();
+    },
+    async drain() {
+      while (buffer) {
+        flushOnce();
+        await wait(interval);
+      }
+      if (timer) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    },
+    stop() {
+      buffer = "";
+      if (timer) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    },
+  };
+}
 
 export function useChat() {
   const store = useChatStore();
@@ -32,14 +87,30 @@ export function useChat() {
       const ac = new AbortController();
       store.setAbortController(ac);
 
+      let flusher: ReturnType<typeof createMarkdownTokenFlusher> | null = null;
       try {
         let fullContent = "";
-        for await (const event of streamMessage(content, store.threadId, images, ac.signal)) {
+        const modelSelection = useAppStore.getState().modelSelection;
+        flusher = createMarkdownTokenFlusher(
+          (token) => store.appendStreamToken(token),
+          useAppStore.getState().markdownTypingSpeed,
+        );
+        for await (const event of streamMessage(content, store.threadId, images, ac.signal, modelSelection)) {
           if (event.type === "emotion") {
             store.setCurrentEmotion(event.data as string);
+          } else if (event.type === "thought") {
+            store.addThought(event.data as string);
+          } else if (event.type === "citation") {
+            store.addCitation(event.data as any);
+          } else if (event.type === "media_task") {
+            const task = event.data as MediaTask;
+            store.addMediaTask(task);
+            mediaTaskPoller.watch(task, (latest) => store.updateMediaTask(latest));
           } else if (event.type === "token") {
             fullContent += event.data as string;
-            store.appendStreamToken(event.data as string);
+            flusher.push(event.data as string);
+          } else if (event.type === "error") {
+            store.addThought("模型调用失败，错误信息已展示在回答正文中。");
           } else if (event.type === "tool_start") {
             const toolData = event.data as any;
             const inputStr =
@@ -47,8 +118,15 @@ export function useChat() {
                 ? JSON.stringify(toolData.input, null, 2)
                 : String(toolData.input ?? "");
             store.addToolCall({ name: toolData.name, input: inputStr });
+          } else if (event.type === "tool_end") {
+            const toolData = event.data as any;
+            store.updateLastToolCall(
+              typeof toolData.name === "string" ? toolData.name : undefined,
+              String(toolData.output ?? "")
+            );
           }
         }
+        await flusher.drain();
 
         store.updateLastAssistant(fullContent);
 
@@ -58,7 +136,7 @@ export function useChat() {
             .getState()
             .sessions.find((s) => s.sessionId === currentSessionId);
           if (session?.name === "新对话") {
-            summarizeSession(currentSessionId)
+            summarizeSession(currentSessionId, modelSelection)
               .then((updated) => {
                 useSessionStore
                   .getState()
@@ -68,6 +146,7 @@ export function useChat() {
           }
         }
       } catch (err: any) {
+        flusher?.stop();
         if (err?.name === "AbortError") {
           // User stopped — keep whatever content was generated so far
           const msgs = store.messages;
@@ -116,21 +195,38 @@ export function useChat() {
       const ac = new AbortController();
       store.setAbortController(ac);
 
+      let flusher: ReturnType<typeof createMarkdownTokenFlusher> | null = null;
       try {
         let fullContent = "";
         let emotion = "";
+        const modelSelection = useAppStore.getState().modelSelection;
+        flusher = createMarkdownTokenFlusher(
+          (token) => store.regenerateStreamToken(messageId, token),
+          useAppStore.getState().markdownTypingSpeed,
+        );
         for await (const event of streamMessage(
           userContent,
           store.threadId,
           userImages,
-          ac.signal
+          ac.signal,
+          modelSelection
         )) {
           if (event.type === "emotion") {
             emotion = event.data as string;
             store.setCurrentEmotion(emotion);
+          } else if (event.type === "thought") {
+            store.regenerateAddThought(messageId, event.data as string);
+          } else if (event.type === "citation") {
+            store.regenerateAddCitation(messageId, event.data as any);
+          } else if (event.type === "media_task") {
+            const task = event.data as MediaTask;
+            store.regenerateAddMediaTask(messageId, task);
+            mediaTaskPoller.watch(task, (latest) => store.updateMediaTask(latest));
           } else if (event.type === "token") {
             fullContent += event.data as string;
-            store.regenerateStreamToken(messageId, event.data as string);
+            flusher.push(event.data as string);
+          } else if (event.type === "error") {
+            store.regenerateAddThought(messageId, "模型调用失败，错误信息已展示在回答正文中。");
           } else if (event.type === "tool_start") {
             const toolData = event.data as any;
             const inputStr =
@@ -141,11 +237,20 @@ export function useChat() {
               name: toolData.name,
               input: inputStr,
             });
+          } else if (event.type === "tool_end") {
+            const toolData = event.data as any;
+            store.regenerateUpdateToolCall(
+              messageId,
+              typeof toolData.name === "string" ? toolData.name : undefined,
+              String(toolData.output ?? "")
+            );
           }
         }
+        await flusher.drain();
 
         store.regenerateFinish(messageId, fullContent, emotion);
       } catch (err: any) {
+        flusher?.stop();
         if (err?.name === "AbortError") {
           // Keep partial content on abort
           store.regenerateFinish(messageId, store.messages.find(m => m.id === messageId)?.content || "(已停止)", "");

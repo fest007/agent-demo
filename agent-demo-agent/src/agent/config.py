@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # ===== MiMo API 配置 =====
     # 小米 MiMo 大模型的 API Key，从 https://api.xiaomimimo.com 获取
     mimo_api_key: str = ""
+    # 可选：多个 MiMo API Key。支持 JSON 或 "name:key,name2:key2" 格式。
+    mimo_api_keys: str = ""
     # MiMo API 的基础地址，兼容 OpenAI 格式
     mimo_base_url: str = "https://api.xiaomimimo.com/v1"
     # 主力模型，用于复杂推理、对话等场景
@@ -31,6 +33,42 @@ class Settings(BaseSettings):
     mimo_model_fast: str = "mimo-v2-flash"
     # 多模态模型，支持图片输入
     mimo_model_omni: str = "mimo-v2-omni"
+
+    # ===== 通用模型供应商配置 =====
+    # 默认供应商和模型；为空时自动选择第一个配置完整的供应商。
+    default_model_provider: str = "mimo"
+    default_model: str = ""
+    # 可选：JSON 配置更多 OpenAI 兼容供应商。
+    # 示例：
+    # [
+    #   {
+    #     "id": "openai-compatible",
+    #     "label": "OpenAI Compatible",
+    #     "base_url": "https://example.com/v1",
+    #     "api_key": "sk-...",
+    #     "models": [{"id": "model-id", "label": "Model"}]
+    #   }
+    # ]
+    model_providers: str = ""
+
+    # ===== 火山方舟 API 配置 =====
+    # 方舟兼容 OpenAI SDK，默认地址参考官方文档：
+    # https://ark.cn-beijing.volces.com/api/v3
+    ark_api_key: str = ""
+    ark_api_keys: str = ""
+    ark_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
+    # 方舟这里通常填写 Model ID 或推理接入点 Endpoint ID。
+    ark_model: str = ""
+    ark_model_fast: str = ""
+    ark_model_omni: str = ""
+
+    # 火山环境变量别名，便于用 VOLCENGINE_* 命名。
+    volcengine_api_key: str = ""
+    volcengine_api_keys: str = ""
+    volcengine_base_url: str = ""
+    volcengine_model: str = ""
+    volcengine_model_fast: str = ""
+    volcengine_model_omni: str = ""
 
     # ===== TTS 语音合成配置 =====
     # 默认 TTS 引擎：mimo-tts（MiMo 自带 TTS）或 edge-tts（微软免费 TTS）
@@ -43,8 +81,16 @@ class Settings(BaseSettings):
     tts_voice: str = "zh-CN-XiaoxiaoNeural"
 
     # ===== 向量数据库配置 =====
-    # ChromaDB 的持久化目录，存储知识库的向量数据
+    # 开发环境默认使用 Chroma，本地零配置；生产可切换为 Qdrant。
+    # VECTOR_STORE=chroma|qdrant
+    vector_store: str = "chroma"
+    # ChromaDB 的持久化目录，存储知识库和长期记忆的向量数据
     chroma_persist_dir: str = str(_PROJECT_ROOT / "data" / "chroma")
+    # Qdrant 生产配置。向量维度需要和 EMBEDDING_MODEL 输出维度一致，bge-base-zh-v1.5 为 768。
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection_prefix: str = "agent_demo"
+    qdrant_vector_size: int = 768
 
     # ===== 嵌入模型配置 =====
     # BAAI/bge-base-zh-v1.5 是中文效果最好的轻量嵌入模型之一
@@ -67,6 +113,11 @@ class Settings(BaseSettings):
     enable_dangerous_tools: bool = False
     # 文件工具允许访问的根目录，防止 Agent 读取/写入项目外文件。
     tool_workspace_root: str = str(_PROJECT_ROOT.parent)
+
+    # ===== 搜索工具配置 =====
+    # 多搜索源按顺序尝试。国内网络建议 baidu,sogou 在前；duckduckgo 依赖包可能会回退到 Bing。
+    search_engines: str = "baidu,sogou,duckduckgo,bing"
+    search_timeout_seconds: float = 8.0
 
     # pydantic-settings 的模型配置
     model_config = {

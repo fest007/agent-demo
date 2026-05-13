@@ -6,7 +6,7 @@ LangChain 的 @tool 装饰器会自动将函数转换为 BaseTool 对象，
 LLM 可以通过 Function Calling 机制调用这些工具。
 
 工具列表（共 14 个）：
-- web_search: DuckDuckGo 网络搜索
+- web_search: 多源网络搜索（默认 Baidu/Sogou/DuckDuckGo/Bing fallback）
 - wikipedia_query: 维基百科查询
 - web_scraper: 网页内容抓取
 - calculator: 数学表达式计算
@@ -46,7 +46,7 @@ def register_all_tools() -> list:
         list: 所有工具对象的列表，可直接传给 create_react_agent
     """
     tools = [
-        web_search,         # 网络搜索
+        web_search,         # 多源网络搜索
         wikipedia_query,    # 维基百科
         web_scraper,        # 网页抓取
         calculator,         # 计算器

@@ -10,7 +10,22 @@
  * SSE 格式：每条消息由 "event:" 和 "data:" 两行组成，以空行分隔。
  */
 import { api } from "./client";
-import type { ChatResponse } from "@/types";
+import type { ChatResponse, ChatHistoryItem } from "@/types";
+import type { ModelSelection } from "@/stores/appStore";
+
+function modelPayload(selection?: ModelSelection) {
+  const customBaseUrl = selection?.customBaseUrl?.trim();
+  const customApiKey = selection?.customApiKey?.trim();
+  return {
+    model_provider: selection?.providerId,
+    model: selection?.modelId,
+    image_model: selection?.imageModelId,
+    video_model: selection?.videoModelId,
+    api_key_id: selection?.apiKeyId,
+    custom_base_url: customBaseUrl || undefined,
+    custom_api_key: customApiKey || undefined,
+  };
+}
 
 /**
  * 同步发送消息（等待完整回复）
@@ -19,15 +34,22 @@ export async function sendMessage(
   message: string,
   threadId: string = "default",
   enableTts: boolean = false,
-  images: string[] = []
+  images: string[] = [],
+  selection?: ModelSelection
 ): Promise<ChatResponse> {
-  return api.post("/chat", { message, thread_id: threadId, enable_tts: enableTts, images });
+  return api.post("/chat", {
+    message,
+    thread_id: threadId,
+    enable_tts: enableTts,
+    images,
+    ...modelPayload(selection),
+  });
 }
 
 /**
  * 获取会话历史
  */
-export async function getHistory(threadId: string) {
+export async function getHistory(threadId: string): Promise<ChatHistoryItem[]> {
   return api.get(`/chat/history/${threadId}`);
 }
 
@@ -55,13 +77,14 @@ export async function* streamMessage(
   message: string,
   threadId: string = "default",
   images: string[] = [],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  selection?: ModelSelection
 ): AsyncGenerator<{ type: string; data: string | object }> {
   // 发送 POST 请求到流式端点
   const resp = await fetch("/api/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, thread_id: threadId, images }),
+    body: JSON.stringify({ message, thread_id: threadId, images, ...modelPayload(selection) }),
     signal,
   });
 

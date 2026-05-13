@@ -1,0 +1,1 @@
+export { EmotionBadge } from "./EmotionBadge";

@@ -18,6 +18,7 @@ from server.models.knowledge import (
 )
 from server.deps import get_current_user, UserContext
 from server.agent_import import ensure_agent_on_path
+import asyncio
 import tempfile
 from pathlib import Path
 
@@ -32,8 +33,15 @@ def _get_rag():
     将 agent-demo-agent/src 加入 Python 路径。
     """
     ensure_agent_on_path()
-    from agent.rag.ingest import ingest_file, ingest_url, ingest_text, list_documents, delete_document
-    return ingest_file, ingest_url, ingest_text, list_documents, delete_document
+    from agent.rag.ingest import (
+        delete_document,
+        get_document_chunks,
+        ingest_file,
+        ingest_text,
+        ingest_url,
+        list_documents,
+    )
+    return ingest_file, ingest_url, ingest_text, list_documents, delete_document, get_document_chunks
 
 
 @router.post("/upload", response_model=KnowledgeUploadResponse)
@@ -57,7 +65,7 @@ async def upload_file(
     Returns:
         上传结果（成功/失败信息）
     """
-    ingest_file_fn, _, _, _, _ = _get_rag()
+    ingest_file_fn, _, _, _, _, _ = _get_rag()
 
     # 获取文件扩展名
     suffix = Path(file.filename).suffix
@@ -98,7 +106,7 @@ async def ingest_url_endpoint(
     Returns:
         入库结果
     """
-    _, ingest_url_fn, _, _, _ = _get_rag()
+    _, ingest_url_fn, _, _, _, _ = _get_rag()
     try:
         result = ingest_url_fn(request.url)
         return {"status": "success", "message": result}
@@ -117,7 +125,7 @@ async def ingest_text_endpoint(
     将用户直接输入的文本存入知识库。
     适合手动录入知识的场景。
     """
-    _, _, ingest_text_fn, _, _ = _get_rag()
+    _, _, ingest_text_fn, _, _, _ = _get_rag()
     try:
         result = ingest_text_fn(request.text, metadata={"source": request.source, "type": "text"})
         return {"status": "success", "message": result}
@@ -128,8 +136,15 @@ async def ingest_text_endpoint(
 @router.get("/list")
 async def list_docs(user: UserContext = Depends(get_current_user)):
     """列出知识库中的所有文档来源"""
-    _, _, _, list_documents_fn, _ = _get_rag()
-    return list_documents_fn()
+    _, _, _, list_documents_fn, _, _ = _get_rag()
+    return await asyncio.to_thread(list_documents_fn)
+
+
+@router.get("/preview")
+async def preview_doc(source: str, user: UserContext = Depends(get_current_user)):
+    """预览某个知识库文档的所有片段。"""
+    _, _, _, _, _, get_document_chunks_fn = _get_rag()
+    return await asyncio.to_thread(get_document_chunks_fn, source)
 
 
 @router.delete("")
@@ -138,7 +153,7 @@ async def delete_doc(
     user: UserContext = Depends(get_current_user),
 ):
     """按来源删除知识库文档"""
-    _, _, _, _, delete_document_fn = _get_rag()
+    _, _, _, _, delete_document_fn, _ = _get_rag()
     try:
         result = delete_document_fn(source)
         return {"status": "success", "message": result}

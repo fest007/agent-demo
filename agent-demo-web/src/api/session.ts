@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { ModelSelection } from "@/stores/appStore";
 
 interface SessionData {
   session_id: string;
@@ -26,8 +27,21 @@ export async function deleteSession(sessionId: string): Promise<void> {
   return api.delete(`/sessions/${sessionId}`);
 }
 
+function modelPayload(selection?: ModelSelection) {
+  const customBaseUrl = selection?.customBaseUrl?.trim();
+  const customApiKey = selection?.customApiKey?.trim();
+  return {
+    model_provider: selection?.providerId,
+    model: selection?.modelId,
+    api_key_id: selection?.apiKeyId,
+    custom_base_url: customBaseUrl || undefined,
+    custom_api_key: customApiKey || undefined,
+  };
+}
+
 export async function summarizeSession(
-  sessionId: string
+  sessionId: string,
+  selection?: ModelSelection
 ): Promise<SessionData> {
-  return api.post(`/sessions/${sessionId}/summarize`);
+  return api.post(`/sessions/${sessionId}/summarize`, modelPayload(selection));
 }

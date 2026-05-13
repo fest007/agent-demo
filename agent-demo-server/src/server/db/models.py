@@ -29,7 +29,38 @@ class Conversation(Base):
     role = Column(String(20), nullable=False)  # 角色："user" 或 "assistant"
     content = Column(Text, nullable=False)  # 消息内容
     emotion = Column(String(20))  # 情绪标签（仅 Agent 回复有）
+    message_metadata = Column(Text)  # 结构化展示元数据（思考态、工具调用、引用等 JSON）
     created_at = Column(DateTime, server_default=func.now())  # 创建时间（数据库自动生成）
+
+
+class MediaTask(Base):
+    """
+    媒体生成任务表
+
+    图片/视频生成通常是异步任务。任务状态单独落库，消息历史只保存可展示摘要，
+    刷新页面后前端可以继续轮询尚未完成的任务。
+    """
+    __tablename__ = "media_tasks"
+
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(100), default="default", index=True)
+    thread_id = Column(String(100), nullable=False, index=True)
+    conversation_id = Column(Integer, index=True)
+    provider = Column(String(80), nullable=False)
+    model = Column(String(200), nullable=False)
+    task_type = Column(String(20), nullable=False)  # image / video
+    mode = Column(String(40), nullable=False)
+    prompt = Column(Text, nullable=False)
+    status = Column(String(20), default="pending", index=True)
+    progress = Column(Integer, default=0)
+    external_task_id = Column(String(200))
+    input_images = Column(Text)
+    result_urls = Column(Text)
+    error = Column(Text)
+    request_payload = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    completed_at = Column(DateTime)
 
 
 class KnowledgeDoc(Base):

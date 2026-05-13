@@ -40,6 +40,33 @@ cp .env.example .env
 MIMO_API_KEY=你的 MiMo API Key
 ```
 
+如果使用火山方舟模型，可以改为配置：
+
+```bash
+DEFAULT_MODEL_PROVIDER=volcengine
+ARK_API_KEY=你的火山方舟 API Key
+ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+ARK_MODEL=你的模型 ID 或推理接入点 Endpoint ID
+```
+
+方舟兼容 OpenAI Chat Completions，后续也可以用 `MODEL_PROVIDERS` JSON 增加其他 OpenAI 兼容供应商。前端设置页会读取这些配置，并允许切换供应商、模型和 API Key。
+
+向量库开发默认使用 Chroma，零配置即可：
+
+```bash
+VECTOR_STORE=chroma
+CHROMA_PERSIST_DIR=./data/chroma
+```
+
+生产环境推荐切换到 Qdrant：
+
+```bash
+VECTOR_STORE=qdrant
+QDRANT_URL=http://localhost:6333
+QDRANT_COLLECTION_PREFIX=agent_demo
+QDRANT_VECTOR_SIZE=768
+```
+
 准备 Server 配置：
 
 ```bash
@@ -110,7 +137,8 @@ scripts/start-web.sh        启动 Vite 前端
 ## 启动注意事项
 
 - 前端统一使用 Node 23：`nvm use 23`。
-- 后端依赖 Agent 的 `.env`，MiMo API Key 应配置在 `agent-demo-agent/.env`。
+- 后端依赖 Agent 的 `.env`，模型供应商、API Key 和模型 ID 应配置在 `agent-demo-agent/.env`。
+- 火山方舟的 `ARK_MODEL` 通常不是展示名称，而是模型 ID 或推理接入点 Endpoint ID；设置页切换后，新对话请求会使用当前选择。
 - 后端端口默认是 `8000`，前端端口默认是 `3000`。
 - 前端 `/api` 请求由 `agent-demo-web/vite.config.ts` 代理到 `http://localhost:8000`。
 - 首次使用 RAG/embedding 时，可能需要下载嵌入模型，启动或第一次入库会比较慢。
@@ -152,10 +180,10 @@ pnpm build
 
 ## Docker Compose
 
-也可以用 Docker Compose 启动后端和前端：
+也可以用 Docker Compose 启动 Qdrant、后端和前端：
 
 ```bash
 docker compose up --build
 ```
 
-当前本地开发更推荐使用上面的分终端脚本。Docker 适合验证容器化部署，不适合后续 debugger 分层调试。
+Docker Compose 默认让后端使用 Qdrant：`VECTOR_STORE=qdrant`、`QDRANT_URL=http://qdrant:6333`。当前本地开发更推荐使用上面的分终端脚本。Docker 适合验证容器化部署，不适合后续 debugger 分层调试。

@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { KnowledgeDocument } from "@/types";
+import type { KnowledgeChunk, KnowledgeDocument } from "@/types";
 
 export async function uploadFile(file: File) {
   const formData = new FormData();
@@ -19,6 +19,10 @@ export async function ingestText(text: string, source: string = "manual") {
 
 export async function listDocuments(): Promise<KnowledgeDocument[]> {
   return api.get("/knowledge/list");
+}
+
+export async function previewDocument(source: string): Promise<KnowledgeChunk[]> {
+  return api.get(`/knowledge/preview?source=${encodeURIComponent(source)}`);
 }
 
 export async function deleteDocument(source: string) {

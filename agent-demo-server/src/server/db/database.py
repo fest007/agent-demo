@@ -13,6 +13,7 @@ SQLAlchemy 是 Python 最流行的 ORM 框架。
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import inspect, text
 
 
 class Base(DeclarativeBase):
@@ -57,6 +58,15 @@ async def init_db():
         # run_sync: 在异步连接上执行同步操作
         # create_all: 创建所有继承自 Base 的表
         await conn.run_sync(ModelBase.metadata.create_all)
+        await conn.run_sync(_ensure_conversation_columns)
+
+
+def _ensure_conversation_columns(sync_conn):
+    """补齐开发期新增列；create_all 不会修改已经存在的表结构。"""
+    inspector = inspect(sync_conn)
+    columns = {col["name"] for col in inspector.get_columns("conversations")}
+    if "message_metadata" not in columns:
+        sync_conn.execute(text("ALTER TABLE conversations ADD COLUMN message_metadata TEXT"))
 
 
 async def get_session() -> AsyncSession:

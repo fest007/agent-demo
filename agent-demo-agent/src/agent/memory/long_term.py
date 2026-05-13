@@ -16,26 +16,20 @@
 """
 from agent.config import get_settings
 from agent.rag.embedder import get_embedder
-import chromadb
+from agent.rag.vector_store import get_vector_collection
 import sqlite3
 from datetime import datetime
 
 
-# ChromaDB 用户记忆集合单例
-_user_memory_client = None
+# 用户记忆向量集合单例
 _user_memory_collection = None
 
 
 def _get_user_memory_collection():
-    """获取用户记忆的 ChromaDB 集合单例（与知识库集合独立）"""
-    global _user_memory_client, _user_memory_collection
+    """获取用户记忆向量集合单例（与知识库集合独立）"""
+    global _user_memory_collection
     if _user_memory_collection is None:
-        settings = get_settings()
-        _user_memory_client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
-        _user_memory_collection = _user_memory_client.get_or_create_collection(
-            name="user_memory",
-            metadata={"hnsw:space": "cosine"},
-        )
+        _user_memory_collection = get_vector_collection("user_memory")
     return _user_memory_collection
 
 
@@ -44,8 +38,8 @@ def _memory_id(user_id: str, namespace: str, key: str) -> str:
     return f"{user_id}_{namespace}_{key}"
 
 
-def _sync_to_chromadb(action: str, user_id: str, namespace: str, key: str, value: str = None):
-    """同步记忆到 ChromaDB，失败不影响 SQLite 主路径"""
+def _sync_to_vector_store(action: str, user_id: str, namespace: str, key: str, value: str = None):
+    """同步记忆到向量库，失败不影响 SQLite 主路径"""
     try:
         collection = _get_user_memory_collection()
         doc_id = _memory_id(user_id, namespace, key)
@@ -63,7 +57,7 @@ def _sync_to_chromadb(action: str, user_id: str, namespace: str, key: str, value
         elif action == "delete":
             collection.delete(ids=[doc_id])
     except Exception:
-        pass  # ChromaDB 故障不阻塞 SQLite 操作
+        pass  # 向量库故障不阻塞 SQLite 操作
 
 
 class LongTermMemory:
@@ -133,8 +127,8 @@ class LongTermMemory:
         conn.commit()
         conn.close()
 
-        # 同步到 ChromaDB 向量库
-        _sync_to_chromadb("upsert", user_id, namespace, key, value)
+        # 同步到向量库
+        _sync_to_vector_store("upsert", user_id, namespace, key, value)
 
     def get(self, user_id: str, namespace: str, key: str) -> str | None:
         """
@@ -202,8 +196,8 @@ class LongTermMemory:
         conn.close()
 
         if cursor.rowcount > 0:
-            # 同步删除 ChromaDB 中的向量
-            _sync_to_chromadb("delete", user_id, namespace, key)
+            # 同步删除向量库中的向量
+            _sync_to_vector_store("delete", user_id, namespace, key)
             return True
         return False
 
@@ -211,7 +205,7 @@ class LongTermMemory:
         """
         语义搜索用户记忆
 
-        通过向量相似度在 ChromaDB 中检索与 query 最相关的记忆。
+        通过向量相似度在向量库中检索与 query 最相关的记忆。
 
         Args:
             user_id: 用户标识
@@ -230,16 +224,17 @@ class LongTermMemory:
             query_embedding = embedder.embed_query(query)
 
             results = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=min(top_k, collection.count()),
+                query_embedding=query_embedding,
+                top_k=top_k,
                 where={"user_id": user_id},
             )
 
-            if not results["metadatas"] or not results["metadatas"][0]:
+            if not results:
                 return []
 
             memories = []
-            for meta in results["metadatas"][0]:
+            for item in results:
+                meta = item.metadata
                 memories.append({
                     "namespace": meta.get("namespace", ""),
                     "key": meta.get("key", ""),

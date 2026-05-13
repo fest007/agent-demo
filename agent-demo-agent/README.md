@@ -10,10 +10,10 @@
 |------|------|------|
 | **Agent 框架** | LangGraph | LangChain 官方 Agent 编排框架，基于有向图的状态机 |
 | **LLM** | 小米 MiMo v2.5-pro | OpenAI 兼容 API，通过 `langchain-openai` 调用 |
-| **向量数据库** | ChromaDB | 知识库（`knowledge` 集合）+ 用户记忆（`user_memory` 集合） |
+| **向量数据库** | Chroma / Qdrant | 开发默认 Chroma，生产可设置 `VECTOR_STORE=qdrant` |
 | **嵌入模型** | BAAI/bge-base-zh-v1.5 | 768 维中文向量，本地运行，约 400MB |
 | **短期记忆** | LangGraph Checkpointer + SQLite | 会话级对话历史，按 thread_id 隔离 |
-| **长期记忆** | SQLite + ChromaDB 双写 | 权威存储 SQLite，语义检索 ChromaDB |
+| **长期记忆** | SQLite + 向量库双写 | 权威存储 SQLite，语义检索走 Chroma 或 Qdrant |
 | **TTS** | MiMo TTS（主）+ Edge-TTS（备） | 统一 TTSEngine 抽象接口 |
 | **MCP** | langchain-mcp-adapters | 支持 stdio / streamable_http / sse 传输 |
 | **Python** | >= 3.11 | 使用 `uv` 管理依赖 |
@@ -400,7 +400,7 @@ ChromaDB "knowledge" 集合
 
 | 工具 | 函数名 | 说明 | 实现文件 |
 |------|--------|------|---------|
-| 网络搜索 | `web_search` | DuckDuckGo 搜索 | `tools/search.py` |
+| 网络搜索 | `web_search` | 多源搜索，默认 Baidu/Sogou/DuckDuckGo/Bing fallback | `tools/search.py` |
 | 维基百科 | `wikipedia_query` | Wikipedia 查询 | `tools/wikipedia.py` |
 | 网页抓取 | `web_scraper` | 抓取网页正文（BeautifulSoup） | `tools/web_scraper.py` |
 | 计算器 | `calculator` | 数学表达式计算（eval 安全沙箱） | `tools/calculator.py` |
@@ -668,7 +668,12 @@ TTS_FALLBACK_ENGINE=edge-tts
 TTS_VOICE=zh-CN-XiaoxiaoNeural   # Edge-TTS 默认语音
 
 # ===== 向量库 =====
-CHROMA_PERSIST_DIR=./data/chroma  # ChromaDB 持久化目录（知识库 + 用户记忆共用）
+VECTOR_STORE=chroma              # 开发默认 Chroma；生产可设置为 qdrant
+CHROMA_PERSIST_DIR=./data/chroma # Chroma 持久化目录（知识库 + 用户记忆共用）
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
+QDRANT_COLLECTION_PREFIX=agent_demo
+QDRANT_VECTOR_SIZE=768
 
 # ===== 嵌入模型 =====
 EMBEDDING_MODEL=BAAI/bge-base-zh-v1.5  # 首次运行自动下载，约 400MB

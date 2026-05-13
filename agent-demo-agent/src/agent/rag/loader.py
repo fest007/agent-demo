@@ -15,6 +15,19 @@ from bs4 import BeautifulSoup
 import httpx
 
 
+def _normalize_text(text: str) -> str:
+    """清理网页提取文本，去掉连续空行和完全重复的相邻行。"""
+    lines = []
+    last = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line == last:
+            continue
+        lines.append(line)
+        last = line
+    return "\n".join(lines)
+
+
 def load_file(file_path: str) -> list[Document]:
     """
     加载本地文件
@@ -71,13 +84,32 @@ def load_url(url: str) -> list[Document]:
     resp = httpx.get(url, headers=headers, follow_redirects=True, timeout=15)
     resp.raise_for_status()
 
-    # 解析 HTML，去除非内容标签
+    # 解析 HTML，去除非内容标签。这里抓取的是服务端返回的 HTML；
+    # 对纯前端渲染站点，静态 HTML 里可能没有完整业务内容。
     soup = BeautifulSoup(resp.text, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
         tag.decompose()
-    text = soup.get_text(separator="\n", strip=True)
+    main_node = soup.find("main") or soup.find("article") or soup.body or soup
+    text = _normalize_text(main_node.get_text(separator="\n", strip=True))
+    title = soup.title.string.strip() if soup.title and soup.title.string else url
+    is_sparse = len(text) < 800
+    extraction_note = ""
+    if is_sparse:
+        extraction_note = "静态 HTML 内容较少，该页面可能依赖前端渲染，当前未执行浏览器渲染抓取。"
 
-    return [Document(page_content=text, metadata={"source": url, "type": "url"})]
+    return [
+        Document(
+            page_content=text,
+            metadata={
+                "source": url,
+                "type": "url",
+                "title": title[:200],
+                "content_length": len(text),
+                "extraction_quality": "sparse" if is_sparse else "static_html",
+                "extraction_note": extraction_note,
+            },
+        )
+    ]
 
 
 def _load_pdf(content: str, metadata: dict) -> list[Document]:

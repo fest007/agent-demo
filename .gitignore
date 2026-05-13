@@ -25,6 +25,7 @@ data/
 # Test artifacts
 test-results/
 playwright-report/
+test-artifacts/
 test_*.txt
 test_*.csv
 test_*.json

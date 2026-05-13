@@ -1,20 +1,22 @@
 # Agent Demo
 
-基于小米 MiMo 大模型的智能代理系统，采用三层架构：React 前端 + FastAPI 后端 + LangGraph Agent 核心。
+一个支持 OpenAI 兼容模型供应商的多模态 Agent 应用，采用三层架构：React 前端 + FastAPI 后端 + LangGraph Agent 核心。
+
+项目最初以小米 MiMo 为默认模型接入，现在已经扩展为供应商可配置架构：只要供应商提供 OpenAI 兼容的 Chat Completions 返回格式，就可以在设置页或环境变量中接入。当前内置支持 MiMo、火山方舟，也支持用户自定义 Base URL、API Key 和模型 ID。
 
 ## 系统架构
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │          前端 (React + TypeScript)            │
 │          agent-demo-web (port 3000)           │
-│   对话界面 · 语音播放 · 情绪展示 · 管理中台    │
+│  对话界面 · 模型设置 · 知识库 · 图片/视频组件  │
 └───────────────────┬──────────────────────────┘
                     │ HTTP / SSE
 ┌───────────────────┴──────────────────────────┐
 │             后端 (FastAPI)                     │
 │          agent-demo-server (port 8000)         │
-│      API 路由 · 会话管理 · SQLAdmin 面板       │
+│ API 路由 · 会话管理 · 异步媒体任务 · SQLAdmin  │
 └───────────────────┬──────────────────────────┘
                     │ Python 内部调用
 ┌───────────────────┴──────────────────────────┐
@@ -24,51 +26,69 @@
 │  │ Agent 图 │ │ RAG 引擎│ │ 工具集 │ │ 记忆系统│ │
 │  └─────────┘ └────────┘ └───────┘ └────────┘ │
 │  ┌─────────┐ ┌────────┐ ┌───────┐ ┌────────┐ │
-│  │ 情绪分析 │ │ TTS 语音│ │ Skills│ │  MCP   │ │
+│  │ 意图路由 │ │ TTS 语音│ │ Skills│ │  MCP   │ │
 │  └─────────┘ └────────┘ └───────┘ └────────┘ │
 └──────────────────────────────────────────────┘
                     │
-         ┌──────────┼──────────┐
-         ▼          ▼          ▼
-    MiMo API    ChromaDB    SQLite
+         ┌──────────┼──────────┬──────────────┐
+         ▼          ▼          ▼              ▼
+ OpenAI-compatible Chroma/Qdrant SQLite   Media APIs
 ```
 
-## 核心功能
+## 核心能力
 
-- **智能对话** — 基于 MiMo v2.5-pro 的多轮对话，支持流式输出（SSE）
-- **RAG 知识库** — 支持文件上传（PDF/Word/MD/TXT）和网址抓取，基于 ChromaDB 向量检索
-- **工具调用** — 内置搜索、计算、文件操作、代码执行等 10+ 工具，LLM 自主决策调度
-- **双层记忆** — 短期记忆（会话级，SQLite Checkpointer）+ 长期记忆（跨会话，langmem 自动事实提取）
-- **情绪分析** — 实时分析对话情绪（开心/难过/生气等），影响 Agent 回复风格
-- **TTS 语音** — MiMo TTS（主）+ Edge-TTS（备），支持语音播放回复
-- **Skills 技能** — 内置研究助手、编程助手等技能，支持 LLM 自动生成新技能
-- **MCP 协议** — 通过 Model Context Protocol 扩展外部工具
-- **会话管理** — 多会话隔离、LLM 自动总结命名、批量删除
+- **多供应商模型接入**：支持 MiMo、火山方舟和自定义 OpenAI 兼容供应商，可在设置页切换供应商、API Key、Base URL 和模型。
+- **智能对话**：LangGraph Agent 多轮对话，支持 SSE 流式输出、思考态展示、工具调用展示和错误透出。
+- **意图路由**：简单问答、图片生成、视频生成等请求先经过 Agent 层意图判断，再进入对应通路。
+- **RAG 知识库**：支持文件上传、文本入库和 URL 网页正文提取入库；回答可携带引用并跳转到知识库片段。
+- **向量库可切换**：开发默认 Chroma，生产可通过 `VECTOR_STORE=qdrant` 切换到 Qdrant。
+- **双层记忆**：短期记忆使用 SQLite Checkpointer，长期记忆使用 SQLite 权威存储 + 向量库语义检索。
+- **图片/视频生成**：支持文生图、图生图、文生视频、图生视频、图文生视频；媒体任务异步轮询，不阻塞当前会话。
+- **工具与 Skills**：内置搜索、计算、文件、RAG、技能等工具，支持 MCP 扩展外部工具。
+- **会话管理**：多会话隔离、自动总结命名、历史恢复、媒体任务完成通知。
+- **发版自动化**：修改版本号后推送到 GitHub，可自动打包并上传 GitHub Releases。
 
 ## 快速开始
 
-本地分终端启动请优先查看 [STARTUP.md](STARTUP.md)，其中包含三个子项目的一键启动脚本和注意事项。
+本地分终端启动优先查看 [STARTUP.md](STARTUP.md)，里面包含三个子项目的一键启动脚本和注意事项。
 
 ### 前置条件
 
 - Python >= 3.11
-- Node.js >= 18
-- pnpm（前端包管理）
-- uv（Python 包管理）
+- Node.js 23（本项目本机统一使用 `nvm use 23`）
+- pnpm
+- uv
 
-### 1. 准备 Agent 核心层配置
+### 1. 准备 Agent 配置
 
 ```bash
 cd agent-demo-agent
 uv sync
 cp .env.example .env
-# 编辑 .env，填入你的 MiMo API Key
 ```
 
-> 当前后端以 Python 包方式直接调用 `agent-demo-agent`，不需要单独启动 Agent HTTP 服务。
-> 如需命令行调试 Agent，可在该目录运行 `python -m agent.main`。
+至少配置一个 OpenAI 兼容模型供应商。例如 MiMo：
 
-### 2. 启动后端服务
+```bash
+DEFAULT_MODEL_PROVIDER=mimo
+MIMO_API_KEY=your_api_key
+MIMO_BASE_URL=https://api.xiaomimimo.com/v1
+MIMO_MODEL=mimo-v2.5-pro
+MIMO_MODEL_FAST=mimo-v2-flash
+```
+
+火山方舟：
+
+```bash
+DEFAULT_MODEL_PROVIDER=volcengine
+ARK_API_KEY=your_ark_api_key
+ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+ARK_MODEL=your_chat_model_or_endpoint_id
+```
+
+自定义 OpenAI 兼容供应商可以通过设置页保存，也可以用 `MODEL_PROVIDERS` JSON 配置。注意：当前通用对话链路要求供应商返回 OpenAI Chat Completions 兼容格式；图片和视频生成按各供应商实际 API 单独适配。
+
+### 2. 启动后端
 
 ```bash
 cd agent-demo-server
@@ -77,54 +97,95 @@ cp .env.example .env
 python -m server.main
 ```
 
+后端默认端口：`8000`。
+
 ### 3. 启动前端
 
 ```bash
 cd agent-demo-web
+source ~/.nvm/nvm.sh
+nvm use 23
 pnpm install
 pnpm dev
 ```
 
-访问 http://localhost:3000
+访问：http://localhost:3000
 
-### Docker Compose（一键启动）
+### 分终端启动脚本
+
+根目录提供了三个脚本，每个脚本只启动一个项目，方便后续调试：
+
+```text
+scripts/start-server.sh      FastAPI 后端
+scripts/start-web.sh         Vite 前端
+scripts/start-agent-cli.sh   Agent CLI 调试
+```
+
+## Docker Compose
 
 ```bash
-# 确保各子项目 .env 已配置
-docker-compose up --build
+docker compose up --build
+```
+
+Docker Compose 会启动 Qdrant、后端和前端。容器化部署默认让后端使用：
+
+```bash
+VECTOR_STORE=qdrant
+QDRANT_URL=http://qdrant:6333
+```
+
+本地开发默认使用 Chroma：
+
+```bash
+VECTOR_STORE=chroma
+CHROMA_PERSIST_DIR=./data/chroma
 ```
 
 ## 项目结构
 
-```
+```text
 agentDemo/
-├── docker-compose.yml           # Docker 编排
-├── 技术方案.md                   # 详细技术设计文档
+├── docker-compose.yml
+├── STARTUP.md
+├── RELEASE.md
+├── VERSION
+├── 技术方案.md
+├── scripts/
+│   ├── start-server.sh
+│   ├── start-web.sh
+│   ├── start-agent-cli.sh
+│   ├── bump-version.mjs
+│   └── prepare-release-bundle.mjs
 │
-├── agent-demo-agent/            # Agent 核心层
-│   ├── src/agent/
-│   │   ├── graph.py             # LangGraph ReAct Agent 构建
-│   │   ├── tools/               # 内置工具集
-│   │   ├── rag/                 # RAG 知识库引擎
-│   │   ├── memory/              # 双层记忆系统
-│   │   ├── emotion/             # 情绪分析
-│   │   ├── tts/                 # TTS 语音合成
-│   │   ├── skills/              # Skills 技能系统
-│   │   └── mcp/                 # MCP 协议支持
-│   └── knowledge/               # 知识库源文件
+├── agent-demo-agent/
+│   └── src/agent/
+│       ├── main.py
+│       ├── model_providers.py
+│       ├── intent/
+│       ├── tools/
+│       ├── rag/
+│       ├── memory/
+│       ├── emotion/
+│       ├── tts/
+│       ├── skills/
+│       └── mcp/
 │
-├── agent-demo-server/           # 后端服务层
+├── agent-demo-server/
 │   └── src/server/
-│       ├── api/                 # API 路由（chat, knowledge, skills, tts, session）
-│       ├── db/                  # 数据库模型与连接
-│       └── main.py              # FastAPI 入口
+│       ├── api/
+│       ├── db/
+│       ├── models/
+│       ├── services/
+│       └── main.py
 │
-└── agent-demo-web/              # 前端界面层
+└── agent-demo-web/
     └── src/
-        ├── components/          # UI 组件
-        ├── stores/              # Zustand 状态管理
-        ├── api/                 # API 调用封装
-        └── hooks/               # React Hooks
+        ├── components/
+        ├── pages/
+        ├── stores/
+        ├── api/
+        ├── hooks/
+        └── utils/
 ```
 
 ## 技术栈
@@ -132,14 +193,29 @@ agentDemo/
 | 层级 | 技术 |
 |------|------|
 | Agent 框架 | LangGraph + LangChain |
-| LLM | 小米 MiMo v2.5-pro（OpenAI 兼容 API） |
-| 向量数据库 | ChromaDB |
+| 模型接入 | OpenAI 兼容 Chat Completions，内置 MiMo / 火山方舟 / 自定义供应商 |
+| 多模态生成 | 火山方舟图片/视频任务接口，后续可扩展其他供应商 |
+| 向量数据库 | Chroma（开发）/ Qdrant（生产） |
 | 嵌入模型 | BAAI/bge-base-zh-v1.5 |
 | 后端 | FastAPI + SQLAlchemy + SSE |
 | 前端 | React 19 + TypeScript + Vite + Ant Design |
 | 状态管理 | Zustand |
 | TTS | MiMo TTS + Edge-TTS |
 | 包管理 | uv (Python) / pnpm (Node) |
+| 发版 | GitHub Actions + GitHub Releases |
+
+## 发版
+
+```bash
+source ~/.nvm/nvm.sh
+nvm use 23
+node scripts/bump-version.mjs 0.2.0
+git add VERSION agent-demo-web/package.json agent-demo-agent/pyproject.toml agent-demo-server/pyproject.toml
+git commit -m "chore: release v0.2.0"
+git push origin main
+```
+
+推送后 GitHub Actions 会构建前端、校验 Python 依赖、打包三项目发行包并上传到 GitHub Releases。更多说明见 [RELEASE.md](RELEASE.md)。
 
 ## 许可证
 

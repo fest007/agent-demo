@@ -1,0 +1,117 @@
+.row {
+  display: flex;
+  margin-bottom: var(--s-xl);
+  align-items: flex-start;
+  animation: revealMsg 0.4s var(--ease-out-expo) both;
+}
+
+.rowUser {
+  justify-content: flex-end;
+}
+
+.rowAssistant {
+  justify-content: flex-start;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: transform var(--t-fast);
+}
+
+.avatar:hover {
+  transform: scale(1.08);
+}
+
+.avatarAssistant {
+  background: linear-gradient(135deg, var(--c-primary), #a78bfa);
+  color: white;
+  margin-right: var(--s-md);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.avatarUser {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+  margin-left: var(--s-md);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15), 0 2px 8px rgba(16, 185, 129, 0.1);
+}
+
+.contentWrapper {
+  max-width: 70%;
+  min-width: 80px;
+  width: fit-content;
+  min-inline-size: 0;
+}
+
+.emotion {
+  margin-bottom: var(--s-xs);
+}
+
+.bubble {
+  position: relative;
+  border-radius: var(--r-xl);
+  transition: box-shadow var(--t-fast);
+}
+
+.userBubble {
+  background: linear-gradient(135deg, var(--c-user-bubble), #4f46e5);
+  color: var(--c-text-inverse);
+  padding: var(--s-md) var(--s-xl);
+  border-bottom-right-radius: var(--r-sm);
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.12),
+    0 4px 16px rgba(99, 102, 241, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.userBubble:hover {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.2),
+    0 6px 20px rgba(99, 102, 241, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.images {
+  margin-bottom: var(--s-sm);
+  display: flex;
+  gap: var(--s-xs);
+  flex-wrap: wrap;
+}
+
+.image {
+  border-radius: var(--r-sm) !important;
+  object-fit: cover;
+}
+
+.time {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  margin-top: 6px;
+  padding: 0 var(--s-xs);
+  font-weight: 500;
+}
+
+.timeUser {
+  text-align: right;
+}
+
+.timeAssistant {
+  text-align: left;
+}
+
+.assistantActions,
+.userActions {
+  opacity: 0;
+}
+
+.rowAssistant:hover .assistantActions,
+.rowUser:hover .userActions {
+  opacity: 1;
+}

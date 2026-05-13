@@ -9,10 +9,11 @@
 - POST /api/sessions/{session_id}/summarize: LLM 总结命名
 """
 import uuid
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from server.models.session import SessionResponse, SessionUpdate
+from server.models.session import SessionResponse, SessionSummarizeRequest, SessionUpdate
 from server.db.models import Session as SessionModel, Conversation
 from server.db.database import get_session
 from server.deps import get_current_user, UserContext
@@ -103,6 +104,7 @@ async def delete_session(
 @router.post("/{session_id}/summarize", response_model=SessionResponse)
 async def summarize_session(
     session_id: str,
+    body: SessionSummarizeRequest | None = None,
     user: UserContext = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
@@ -145,20 +147,37 @@ async def summarize_session(
         elif m.role == "assistant":
             assistant_msg = m.content[:200]
 
-    # 调用 LLM 生成总结
+    def local_summary() -> str:
+        text = re.sub(r"[\s#*_`>\\-]+", "", user_msg)
+        text = re.sub(r"^(请|帮我|麻烦|你能|可以|给我|帮忙)", "", text)
+        text = re.sub(r"(一下|一下吧|吗|么|嘛|？|\\?|。|，|,|！|!)", "", text)
+        if not text:
+            text = assistant_msg or "新对话"
+        return text[:8] or "新对话"
+
+    body = body or SessionSummarizeRequest()
+
+    # 调用 LLM 生成总结；失败时使用本地规则兜底，避免历史列表长期停留在“新对话”。
     try:
         ensure_agent_on_path()
-        from agent.config import get_settings
+        from agent.model_providers import resolve_model_config
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import HumanMessage
 
-        settings = get_settings()
+        model_config = resolve_model_config(
+            provider_id=body.model_provider,
+            model_id=body.model,
+            key_id=body.api_key_id,
+            purpose="fast",
+        )
+        base_url = body.custom_base_url or model_config.base_url
+        api_key = body.custom_api_key or model_config.api_key
         llm = ChatOpenAI(
-            model=settings.mimo_model_fast,
-            api_key=settings.mimo_api_key,
-            base_url=settings.mimo_base_url,
+            model=model_config.model,
+            api_key=api_key,
+            base_url=base_url,
             temperature=0.3,
-            max_tokens=2000,  # 模型需要较多 reasoning tokens
+            max_tokens=80,
         )
 
         from server.utils import strip_markdown
@@ -176,11 +195,17 @@ async def summarize_session(
         # 安全截断：仅在 LLM 未遵守指令时兜底
         if len(summary) > 8:
             summary = summary[:8]
+        if not summary or summary in {"新对话", "对话", "聊天", "项目介绍"}:
+            summary = local_summary()
         if summary:
             sess.name = summary
             await session.commit()
             await session.refresh(sess)
     except Exception:
-        pass  # 总结失败时保持原名
+        summary = local_summary()
+        if summary and summary != "新对话":
+            sess.name = summary
+            await session.commit()
+            await session.refresh(sess)
 
     return sess

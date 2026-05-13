@@ -1,13 +1,17 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Layout, ConfigProvider, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { Sidebar } from "@/components/Sidebar";
-import { Home } from "@/pages/Home";
-import { Knowledge } from "@/pages/Knowledge";
-import { Tools } from "@/pages/Tools";
-import { Skills } from "@/pages/Skills";
-import { Settings } from "@/pages/Settings";
+import { Sidebar } from "@/components/Sidebar/Sidebar";
+import { MediaNotifications } from "@/components/MediaNotifications";
 import { useAppStore } from "@/stores/appStore";
+import { useMediaTaskRecovery } from "@/hooks/useMediaTaskRecovery";
+import styles from "./App.module.css";
+
+const Home = lazy(() => import("@/pages/Home").then((module) => ({ default: module.Home })));
+const Knowledge = lazy(() => import("@/pages/Knowledge/Knowledge").then((module) => ({ default: module.Knowledge })));
+const Tools = lazy(() => import("@/pages/Tools/Tools").then((module) => ({ default: module.Tools })));
+const Skills = lazy(() => import("@/pages/Skills/Skills").then((module) => ({ default: module.Skills })));
+const Settings = lazy(() => import("@/pages/Settings/Settings").then((module) => ({ default: module.Settings })));
 
 const pages: Record<string, React.FC> = {
   chat: Home,
@@ -20,6 +24,7 @@ const pages: Record<string, React.FC> = {
 const App: React.FC = () => {
   const currentPage = useAppStore((s) => s.currentPage);
   const Page = pages[currentPage] || Home;
+  useMediaTaskRecovery();
 
   return (
     <ConfigProvider
@@ -81,10 +86,13 @@ const App: React.FC = () => {
         algorithm: theme.defaultAlgorithm,
       }}
     >
-      <Layout className="app-layout">
+      <Layout className={styles.layout}>
         <Sidebar />
+        <MediaNotifications />
         <Layout>
-          <Page />
+          <Suspense fallback={<div className={styles.pageFallback} />}>
+            <Page />
+          </Suspense>
         </Layout>
       </Layout>
     </ConfigProvider>

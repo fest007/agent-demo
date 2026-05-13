@@ -1,0 +1,34 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  justify-content: flex-end;
+  transition: opacity 200ms var(--ease-out-expo);
+}
+
+.button {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  transition: all 150ms var(--ease-out-expo);
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  padding: 0;
+  line-height: 1;
+}
+
+.button:hover {
+  background: var(--c-surface-muted);
+  color: var(--c-text-secondary);
+}
+
+.button:active {
+  transform: scale(0.92);
+}

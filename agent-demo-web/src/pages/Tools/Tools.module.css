@@ -1,0 +1,104 @@
+.page {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--c-bg);
+}
+
+.content {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: var(--s-3xl) var(--s-4xl);
+  animation: revealUp 0.5s var(--ease-out-expo) both;
+}
+
+.header {
+  margin-bottom: var(--s-3xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-xl);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.titleIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(99, 102, 241, 0.12);
+}
+
+.title {
+  font-size: var(--fs-2xl) !important;
+  font-weight: 700 !important;
+  color: var(--c-text) !important;
+  margin-bottom: 0 !important;
+  letter-spacing: -0.03em;
+}
+
+.description {
+  font-size: var(--fs-md) !important;
+  color: var(--c-text-muted) !important;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.searchIcon {
+  color: #9ca0ab;
+}
+
+.search {
+  width: 240px;
+  border-radius: 12px !important;
+}
+
+.card {
+  border-radius: 16px !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.toolAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  transition: background 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toolAvatarEnabled {
+  background: #eef2ff;
+}
+
+.toolIcon {
+  font-size: 18px;
+  color: #9ca0ab;
+  transition: color 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toolIconEnabled {
+  color: #6366f1;
+}
+
+.toolTitle {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.toolName {
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
