@@ -1,6 +1,6 @@
 [project]
 name = "agent-demo-agent"
-version = "0.3.1"
+version = "0.3.2"
 description = "智能 Agent 核心层 - 基于 LangGraph"
 requires-python = ">=3.11"
 dependencies = [

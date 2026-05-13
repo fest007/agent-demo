@@ -29,10 +29,9 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 if let Some(state) = window.app_handle().try_state::<SidecarState>() {
                     if let Ok(mut child) = state.0.lock() {
-                        if let Some(process) = child.as_mut() {
+                        if let Some(process) = child.take() {
                             let _ = process.kill();
                         }
-                        *child = None;
                     }
                 }
             }

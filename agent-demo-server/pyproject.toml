@@ -1,6 +1,6 @@
 [project]
 name = "agent-demo-server"
-version = "0.3.1"
+version = "0.3.2"
 description = "智能 Agent 后端服务层 - FastAPI"
 requires-python = ">=3.11"
 dependencies = [
