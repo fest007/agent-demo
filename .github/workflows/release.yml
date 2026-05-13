@@ -74,7 +74,7 @@ jobs:
 
       - name: Build desktop installer
         working-directory: agent-demo-web
-        run: pnpm tauri build
+        run: pnpm tauri build --bundles ${{ runner.os == 'Windows' && 'nsis' || 'dmg' }}
 
       - name: Collect macOS installer
         if: runner.os != 'Windows'

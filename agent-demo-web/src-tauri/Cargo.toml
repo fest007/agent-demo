@@ -1,6 +1,6 @@
 [package]
 name = "agent-demo-desktop"
-version = "0.3.0"
+version = "0.3.1"
 description = "Agent Demo desktop app"
 authors = ["Agent Demo"]
 edition = "2021"
