@@ -21,6 +21,75 @@ from server.agent_import import ensure_agent_on_path
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
+_GENERIC_TITLES = {"新对话", "对话", "聊天", "项目介绍", "会话标题", "标题"}
+_ASCII_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#._-]*|[0-9]+")
+_TITLE_PREFIX_RE = re.compile(r"^(标题|会话标题|主题|话题)\s*[:：-]?\s*")
+_LEADING_FILLER_RE = re.compile(
+    r"^(请|帮我|麻烦|你能|可以|给我|帮忙|想要|需要|如何|怎么|关于|有关|写一个|写个|做一个|做个|生成一个|生成个)+"
+)
+_TRAILING_FILLER_RE = re.compile(r"(一下|一下吧|吗|么|嘛|呢|呀)+$")
+
+
+def _clean_title_source(text: str) -> str:
+    text = (text or "").strip()
+    text = re.sub(r"[\r\n\t]+", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    text = _TITLE_PREFIX_RE.sub("", text)
+    text = text.strip("`'\"“”‘’[](){}<>:：-，,。！？!? ")
+    text = _LEADING_FILLER_RE.sub("", text)
+    text = _TRAILING_FILLER_RE.sub("", text)
+    return text.strip()
+
+
+def _fit_title(text: str, max_units: int = 8) -> str:
+    cleaned = _clean_title_source(text)
+    if not cleaned:
+        return ""
+
+    tokens: list[tuple[str, int]] = []
+    i = 0
+    while i < len(cleaned):
+        match = _ASCII_TOKEN_RE.match(cleaned, i)
+        if match:
+            token = match.group(0)
+            tokens.append((token, 2))
+            i = match.end()
+            continue
+        char = cleaned[i]
+        i += 1
+        if char.isspace():
+            continue
+        if re.match(r"[，,。！？!?、:：;；/\\|]+", char):
+            continue
+        tokens.append((char, 1))
+
+    if not tokens:
+        return ""
+
+    title_parts: list[str] = []
+    units = 0
+    for token, cost in tokens:
+        if units + cost > max_units:
+            break
+        title_parts.append(token)
+        units += cost
+
+    if not title_parts:
+        first_token, _ = tokens[0]
+        return first_token[:12] if first_token.isascii() else first_token[:max_units]
+
+    title = "".join(title_parts).strip()
+    title = title.strip("`'\"“”‘’[](){}<>:：-，,。！？!? ")
+    return "" if title in _GENERIC_TITLES else title
+
+
+def _build_local_summary(user_msg: str, assistant_msg: str) -> str:
+    primary = _fit_title(user_msg)
+    if primary:
+        return primary
+    backup = _fit_title(assistant_msg)
+    return backup or "新对话"
+
 
 @router.post("", response_model=SessionResponse)
 async def create_session(
@@ -148,22 +217,19 @@ async def summarize_session(
             assistant_msg = m.content[:200]
 
     def local_summary() -> str:
-        text = re.sub(r"[\s#*_`>\\-]+", "", user_msg)
-        text = re.sub(r"^(请|帮我|麻烦|你能|可以|给我|帮忙)", "", text)
-        text = re.sub(r"(一下|一下吧|吗|么|嘛|？|\\?|。|，|,|！|!)", "", text)
-        if not text:
-            text = assistant_msg or "新对话"
-        return text[:8] or "新对话"
+        return _build_local_summary(user_msg, assistant_msg)
 
     body = body or SessionSummarizeRequest()
 
     # 调用 LLM 生成总结；失败时使用本地规则兜底，避免历史列表长期停留在“新对话”。
     try:
         ensure_agent_on_path()
+        from agent.config import get_settings
         from agent.model_providers import resolve_model_config
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import HumanMessage
 
+        settings = get_settings()
         model_config = resolve_model_config(
             provider_id=body.model_provider,
             model_id=body.model,
@@ -178,6 +244,8 @@ async def summarize_session(
             base_url=base_url,
             temperature=0.3,
             max_tokens=80,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
         )
 
         from server.utils import strip_markdown
@@ -185,17 +253,15 @@ async def summarize_session(
         prompt = (
             "根据以下对话内容，生成一个简短的会话标题。\n"
             "要求：\n"
-            "1. 严格不超过8个汉字（2到8个字），其中标点符号也算字\n"
-            "2. 只输出标题本身，不要任何解释、标点或引号\n"
-            "3. 用简洁的名词或短语概括对话主题\n\n"
+            "1. 优先输出 4 到 8 个汉字的简洁短语\n"
+            "2. 如果必须包含英文技术词，请保留完整单词，不要截断成半个词，例如写 Python，不要写 Pytho\n"
+            "3. 只输出标题本身，不要任何解释、标点或引号\n"
+            "4. 避免使用“帮我”“请”“写一个”这类动作前缀，直接概括主题\n\n"
             f"对话内容：\n用户：{user_msg}\n助手：{assistant_msg}"
         )
         resp = await llm.ainvoke([HumanMessage(content=prompt)])
-        summary = strip_markdown(resp.content).strip()
-        # 安全截断：仅在 LLM 未遵守指令时兜底
-        if len(summary) > 8:
-            summary = summary[:8]
-        if not summary or summary in {"新对话", "对话", "聊天", "项目介绍"}:
+        summary = _fit_title(strip_markdown(resp.content).strip())
+        if not summary:
             summary = local_summary()
         if summary:
             sess.name = summary
