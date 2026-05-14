@@ -92,14 +92,25 @@ async def generate_skill_endpoint(
     _, _, generate_skill_fn, _, _ = _get_skills()
 
     ensure_agent_on_path()
+    from agent.config import get_settings
     from langchain_openai import ChatOpenAI
     from agent.model_providers import resolve_model_config
 
-    model_config = resolve_model_config(purpose="fast")
+    settings = get_settings()
+    model_config = resolve_model_config(
+        provider_id=request.model_provider,
+        model_id=request.model,
+        key_id=request.api_key_id,
+        purpose="fast",
+    )
+    base_url = request.custom_base_url or model_config.base_url
+    api_key = request.custom_api_key or model_config.api_key
     llm = ChatOpenAI(
         model=model_config.model,
-        api_key=model_config.api_key,
-        base_url=model_config.base_url,
+        api_key=api_key,
+        base_url=base_url,
+        timeout=settings.llm_timeout_seconds,
+        max_retries=settings.llm_max_retries,
     )
 
     try:
