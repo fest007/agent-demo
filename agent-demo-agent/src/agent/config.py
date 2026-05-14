@@ -119,6 +119,14 @@ class Settings(BaseSettings):
     search_engines: str = "baidu,sogou,duckduckgo,bing"
     search_timeout_seconds: float = 8.0
 
+    # ===== LLM 调用配置 =====
+    # 对话/总结/技能生成等 OpenAI-compatible Chat Completions 的超时时间（秒）。
+    llm_timeout_seconds: float = 60.0
+    # 轻量分类请求的超时时间（如媒体意图分类）。
+    llm_router_timeout_seconds: float = 15.0
+    # 出现瞬时网络抖动时允许的自动重试次数。
+    llm_max_retries: int = 1
+
     # pydantic-settings 的模型配置
     model_config = {
         "env_file": str(_PROJECT_ROOT / ".env"),  # 从项目根目录的 .env 文件读取
