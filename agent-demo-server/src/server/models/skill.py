@@ -17,6 +17,11 @@ class SkillCreateRequest(BaseModel):
 
 class SkillGenerateRequest(BaseModel):
     description: str
+    model_provider: str | None = None
+    model: str | None = None
+    api_key_id: str | None = None
+    custom_base_url: str | None = None
+    custom_api_key: str | None = None
 
 
 class SkillUpdateRequest(BaseModel):
