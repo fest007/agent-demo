@@ -27,6 +27,7 @@ import re
 from datetime import datetime
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
+from agent.config import get_settings
 from agent.graph import build_agent
 from agent.model_providers import resolve_model_config
 from agent.prompts import SYSTEM_PROMPT
@@ -135,6 +136,7 @@ def _build_llm(
     custom_api_key: str | None = None,
     purpose: str = "chat",
 ) -> ChatOpenAI:
+    settings = get_settings()
     selected_model = (model or "").strip()
     if custom_api_key:
         if not custom_base_url:
@@ -147,8 +149,8 @@ def _build_llm(
             base_url=custom_base_url,
             temperature=temperature,
             streaming=streaming,
-            timeout=12,
-            max_retries=0,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
         )
 
     config = resolve_model_config(
@@ -164,8 +166,8 @@ def _build_llm(
         base_url=base_url,
         temperature=temperature,
         streaming=streaming,
-        timeout=12,
-        max_retries=0,
+        timeout=settings.llm_timeout_seconds,
+        max_retries=settings.llm_max_retries,
     )
 
 
