@@ -25,6 +25,7 @@ import {
   updateSkill,
   generateSkill,
 } from "@/api/skills";
+import { useAppStore } from "@/stores/appStore";
 import type { SkillInfo } from "@/types";
 import styles from "./Skills.module.css";
 
@@ -40,6 +41,7 @@ const Skills: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
   const mountedRef = useRef(true);
+  const modelSelection = useAppStore((state) => state.modelSelection);
 
   const loadSkills = async () => {
     try {
@@ -60,7 +62,7 @@ const Skills: React.FC = () => {
     if (!genDesc.trim()) return;
     setLoading(true);
     try {
-      const result = await generateSkill(genDesc);
+      const result = await generateSkill(genDesc, modelSelection);
       if ((result as any).status === "success") {
         message.success(`技能 "${(result as any).name}" 生成成功`);
         setGenModalOpen(false);
