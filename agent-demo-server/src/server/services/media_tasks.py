@@ -89,9 +89,13 @@ async def classify_media_intent(request: ChatRequest) -> dict[str, str] | None:
 
 
 def _resolve_provider(request: ChatRequest, task_type: str) -> dict[str, str]:
-    provider_id = request.model_provider or "volcengine"
-    model = request.image_model if task_type == "image" else request.video_model
-    model = model or request.model or ""
+    ensure_agent_on_path()
+    from agent.config import get_settings
+    from agent.model_providers import list_model_providers, resolve_model_config
+
+    provider_id = request.model_provider or get_settings().default_model_provider
+    requested_model = request.image_model if task_type == "image" else request.video_model
+    model = requested_model or request.model or ""
     if task_type == "image" and (not model or "seedance" in model or "code" in model):
         model = IMAGE_MODELS.get(provider_id, model)
     if task_type == "video" and (not model or "seedream" in model or "code" in model):
@@ -105,8 +109,21 @@ def _resolve_provider(request: ChatRequest, task_type: str) -> dict[str, str]:
             "base_url": request.custom_base_url.rstrip("/"),
         }
 
-    ensure_agent_on_path()
-    from agent.model_providers import list_model_providers
+    try:
+        resolved = resolve_model_config(
+            provider_id=provider_id,
+            model_id=model,
+            key_id=request.api_key_id,
+            purpose="chat",
+        )
+        return {
+            "provider_id": resolved.provider_id,
+            "model": resolved.model,
+            "api_key": resolved.api_key,
+            "base_url": resolved.base_url.rstrip("/"),
+        }
+    except Exception:
+        pass
 
     for provider in list_model_providers():
         if provider.id != provider_id:
