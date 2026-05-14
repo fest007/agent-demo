@@ -15,6 +15,7 @@ venv/
 node_modules/
 dist/
 build/
+*.tsbuildinfo
 .turbo/
 agent-demo-web/src-tauri/target/
 agent-demo-web/src-tauri/binaries/*
