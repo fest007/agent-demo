@@ -89,6 +89,8 @@ def _format_model_error(exc: Exception, request: ChatRequest) -> str:
         reasons.append("账号尚未在火山方舟控制台开通该模型服务，请先在 Ark Console 激活该模型，或改用已开通的模型/推理接入点")
     elif is_api_not_supported:
         reasons.append("当前模型不是聊天对话模型，不能调用 OpenAI-compatible Chat Completions；请在设置页选择文本/代码对话模型")
+    elif "timed out" in lowered or "timeout" in lowered or "readtimeout" in lowered:
+        reasons.append("模型服务响应超时，供应商侧延迟波动或本地超时配置过短都可能触发")
     elif "api key" in lowered or "unauthorized" in lowered or "401" in lowered or "authentication" in lowered:
         reasons.append("API Key 无效、未生效或没有该模型权限")
     if (
