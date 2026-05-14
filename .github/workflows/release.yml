@@ -72,9 +72,32 @@ jobs:
       - name: Build Python sidecar
         run: node scripts/build-sidecar.mjs
 
-      - name: Build desktop installer
+      - name: Build Windows installer
+        if: runner.os == 'Windows'
         working-directory: agent-demo-web
-        run: pnpm tauri build --bundles ${{ runner.os == 'Windows' && 'nsis' || 'dmg' }}
+        run: pnpm tauri build --bundles nsis
+
+      - name: Build macOS app bundle
+        if: runner.os != 'Windows'
+        working-directory: agent-demo-web
+        run: pnpm tauri build --bundles app
+
+      - name: Package macOS DMG
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          APP_PATH="agent-demo-web/src-tauri/target/release/bundle/macos/Agent Demo.app"
+          DMG_DIR="agent-demo-web/src-tauri/target/release/bundle/dmg"
+          STAGE_DIR="$(mktemp -d)"
+          mkdir -p "$DMG_DIR"
+          cp -R "$APP_PATH" "$STAGE_DIR/"
+          ln -s /Applications "$STAGE_DIR/Applications"
+          hdiutil create \
+            -volname "Agent Demo" \
+            -srcfolder "$STAGE_DIR" \
+            -ov \
+            -format UDZO \
+            "$DMG_DIR/Agent Demo_$(cat VERSION)_$(uname -m).dmg"
 
       - name: Collect macOS installer
         if: runner.os != 'Windows'
