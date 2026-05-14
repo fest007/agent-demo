@@ -7,7 +7,9 @@ from typing import Any
 
 import httpx
 
+from agent.config import get_settings
 from agent.model_providers import list_model_providers
+from agent.model_providers import resolve_model_config
 
 
 @dataclass
@@ -82,39 +84,53 @@ def _extract_json_object(text: str) -> dict[str, Any]:
 
 
 def _resolve_chat_provider(request: IntentRoutingRequest) -> dict[str, str]:
-    provider_id = request.model_provider or "volcengine"
     if request.custom_base_url and request.custom_api_key:
         return {
-            "provider_id": provider_id,
+            "provider_id": request.model_provider or "",
             "model": request.model or "",
             "api_key": request.custom_api_key,
             "base_url": request.custom_base_url.rstrip("/"),
         }
 
-    for provider in list_model_providers():
-        if provider.id != provider_id:
-            continue
-        key = None
-        for candidate in provider.keys:
-            if request.api_key_id and candidate.id == request.api_key_id:
-                key = candidate
-                break
-        key = key or (provider.keys[0] if provider.keys else None)
-        if not key:
-            break
+    try:
+        resolved = resolve_model_config(
+            provider_id=request.model_provider,
+            model_id=request.model,
+            key_id=request.api_key_id,
+            purpose="fast",
+        )
         return {
-            "provider_id": provider.id,
-            "model": provider.fast_model or request.model or provider.default_model,
-            "api_key": key.key,
-            "base_url": provider.base_url.rstrip("/"),
+            "provider_id": resolved.provider_id,
+            "model": resolved.model,
+            "api_key": resolved.api_key,
+            "base_url": resolved.base_url.rstrip("/"),
         }
+    except Exception:
+        provider_id = request.model_provider or get_settings().default_model_provider
+        for provider in list_model_providers():
+            if provider.id != provider_id:
+                continue
+            key = None
+            for candidate in provider.keys:
+                if request.api_key_id and candidate.id == request.api_key_id:
+                    key = candidate
+                    break
+            key = key or (provider.keys[0] if provider.keys else None)
+            if not key:
+                break
+            return {
+                "provider_id": provider.id,
+                "model": request.model or provider.fast_model or provider.default_model,
+                "api_key": key.key,
+                "base_url": provider.base_url.rstrip("/"),
+            }
 
-    return {
-        "provider_id": provider_id,
-        "model": request.model or "",
-        "api_key": request.custom_api_key or "",
-        "base_url": (request.custom_base_url or "").rstrip("/"),
-    }
+        return {
+            "provider_id": provider_id,
+            "model": request.model or "",
+            "api_key": request.custom_api_key or "",
+            "base_url": (request.custom_base_url or "").rstrip("/"),
+        }
 
 
 async def classify_media_intent(request: IntentRoutingRequest) -> IntentRoute | None:
@@ -138,7 +154,7 @@ async def classify_media_intent(request: IntentRoutingRequest) -> IntentRoute | 
         "请只输出 JSON。"
     )
     try:
-        async with httpx.AsyncClient(timeout=4) as client:
+        async with httpx.AsyncClient(timeout=get_settings().llm_router_timeout_seconds) as client:
             resp = await client.post(
                 f"{resolved['base_url']}/chat/completions",
                 headers={
