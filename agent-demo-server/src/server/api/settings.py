@@ -221,7 +221,8 @@ def _parse_models_payload(data: Any) -> list[dict[str, str | bool]]:
 async def _fetch_openai_compatible_models(base_url: str, api_key: str) -> list[dict[str, str | bool]]:
     url = _models_url(base_url)
     headers = {"Authorization": f"Bearer {api_key}"}
-    async with httpx.AsyncClient(timeout=15) as client:
+    settings = _agent_settings()
+    async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
         resp = await client.get(url, headers=headers)
         if resp.status_code >= 400:
             detail = resp.text[:300]
@@ -336,7 +337,7 @@ async def _query_mimo_quota(api_key: str) -> tuple[dict, str]:
     ]
     headers = {"Authorization": f"Bearer {api_key}"}
     errors = []
-    async with httpx.AsyncClient(timeout=12) as client:
+    async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
         for url in endpoints:
             try:
                 resp = await client.get(url, headers=headers)
@@ -353,6 +354,7 @@ async def _query_mimo_quota(api_key: str) -> tuple[dict, str]:
 
 
 async def _query_generic_quota(base_url: str, api_key: str) -> tuple[dict, str]:
+    settings = _agent_settings()
     root = _root_from_base_url(base_url)
     base = base_url.rstrip("/")
     endpoints = [
@@ -368,7 +370,7 @@ async def _query_generic_quota(base_url: str, api_key: str) -> tuple[dict, str]:
     headers = {"Authorization": f"Bearer {api_key}"}
     errors = []
     seen: set[str] = set()
-    async with httpx.AsyncClient(timeout=12) as client:
+    async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
         for url in endpoints:
             if url in seen:
                 continue
